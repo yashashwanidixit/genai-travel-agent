@@ -1,0 +1,218 @@
+from __future__ import annotations
+
+import json
+from typing import Optional
+
+from pydantic import BaseModel, ValidationError
+
+from app.llm.prompts import INTENT_SYSTEM_PROMPT
+from app.llm.provider import LLMProvider
+from app.models.intent import ExtractedSlots, IntentCategory, TravelIntent
+from app.monitoring.performance_monitor import (
+    ColdStartTracker,
+    PerformanceMetrics,
+    PerformanceTimer,
+)
+
+
+class IntentParsingError(Exception):
+    """Raised when the LLM output cannot be turned into a valid
+    TravelIntent even after a correction retry."""
+
+
+class _LLMIntentOutput(BaseModel):
+    """Raw shape expected back from the LLM, before it is mapped onto
+    TravelIntent. Kept separate from ExtractedSlots so a malformed
+    'category' field doesn't get conflated with slot validation errors.
+    """
+
+    category: IntentCategory
+    origin: Optional[str] = None
+    destination: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    meeting_location: Optional[str] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
+    number_of_rooms: Optional[int] = None
+    number_of_adults: Optional[int] = None
+    number_of_children: Optional[int] = None
+    children_ages: Optional[list[int]] = None
+    minimum_hotel_rating: Optional[float] = None
+    ride_type: Optional[str] = None
+
+
+class IntentAgent:
+    """User query -> LLMProvider -> JSON -> Pydantic -> TravelIntent.
+
+    Unchanged extraction/validation/retry logic from before. The only
+    addition is wall-clock performance tracking around the whole parse
+    and around the LLM call specifically, returned via parse_with_metrics().
+    """
+
+    def __init__(self, llm_provider: LLMProvider, max_retries: int = 1):
+        self.llm_provider = llm_provider
+        self.max_retries = max_retries
+        self._cold_start_tracker = ColdStartTracker()
+
+    def parse(self, raw_query: str) -> TravelIntent:
+        """Original interface, unchanged behavior — no metrics returned."""
+        intent, _ = self.parse_with_metrics(raw_query)
+        return intent
+
+    def parse_with_metrics(
+        self, raw_query: str
+    ) -> tuple[TravelIntent, PerformanceMetrics]:
+        """Same parsing logic as parse(), plus a PerformanceMetrics record
+        describing total time, LLM-only time, and overhead.
+        """
+        total_timer = PerformanceTimer()
+        total_timer.start()
+
+        llm_time_accum = 0.0
+        last_error: Optional[str] = None
+        possible_cold_start = False
+
+        try:
+            for _ in range(self.max_retries + 1):
+                user_prompt = self._build_user_prompt(raw_query, last_error)
+
+                # Prefer the metadata-aware call if the provider supports
+                # it (OllamaProvider does); fall back gracefully otherwise
+                # so this still works with any LLMProvider implementation.
+                if hasattr(
+                    self.llm_provider, "generate_structured_with_metadata"
+                ):
+                    if not possible_cold_start:
+                        possible_cold_start = (
+                            self._cold_start_tracker.is_possible_cold_start()
+                        )
+                    call_result = (
+                        self.llm_provider.generate_structured_with_metadata(
+                            INTENT_SYSTEM_PROMPT, user_prompt
+                        )
+                    )
+                    raw_response = call_result.text
+                    llm_time_accum += call_result.llm_time
+                else:
+                    llm_timer = PerformanceTimer()
+                    llm_timer.start()
+                    raw_response = self.llm_provider.generate_structured(
+                        INTENT_SYSTEM_PROMPT, user_prompt
+                    )
+                    llm_time_accum += llm_timer.stop()
+
+                try:
+                    parsed_json = json.loads(raw_response)
+                except json.JSONDecodeError as exc:
+                    last_error = f"Your last response was not valid JSON: {exc}"
+                    continue
+
+                try:
+                    llm_output = _LLMIntentOutput.model_validate(parsed_json)
+                except ValidationError as exc:
+                    last_error = (
+                        "Your last response did not match the required "
+                        f"schema: {exc}"
+                    )
+                    continue
+
+                intent = self._to_travel_intent(raw_query, llm_output)
+                total_time = total_timer.stop()
+                metrics = PerformanceMetrics(
+                    status="SUCCESS",
+                    total_time=total_time,
+                    llm_time=llm_time_accum,
+                    overhead_time=max(total_time - llm_time_accum, 0.0),
+                    possible_cold_start=possible_cold_start,
+                )
+                return intent, metrics
+
+            total_time = total_timer.stop()
+            error_message = (
+                f"Could not extract a valid intent after "
+                f"{self.max_retries + 1} attempt(s). Last error: {last_error}"
+            )
+            metrics = PerformanceMetrics(
+                status="FAILED",
+                total_time=total_time,
+                llm_time=llm_time_accum,
+                overhead_time=max(total_time - llm_time_accum, 0.0),
+                error=error_message,
+                possible_cold_start=possible_cold_start,
+            )
+            raise IntentParsingError(error_message)
+
+        except RuntimeError as exc:
+            # Provider-level failure (connection error, timeout, HTTP error).
+            total_time = total_timer.stop()
+            metrics = PerformanceMetrics(
+                status="FAILED",
+                total_time=total_time,
+                llm_time=llm_time_accum,
+                overhead_time=max(total_time - llm_time_accum, 0.0),
+                error=str(exc),
+                possible_cold_start=possible_cold_start,
+            )
+            metrics.print_report()
+            raise
+
+    def _build_user_prompt(
+        self, raw_query: str, last_error: Optional[str]
+    ) -> str:
+        if last_error is None:
+            return raw_query
+
+        return (
+            f"{last_error}\n\n"
+            "Correct your response. Return JSON only, matching the "
+            "required schema exactly. Do not include any explanation. "
+            "Remember: minimum_hotel_rating must stay null unless the "
+            "user gave an explicit numeric floor for this search.\n\n"
+            f"Original user request: {raw_query}"
+        )
+
+    def _to_travel_intent(
+        self, raw_query: str, llm_output: _LLMIntentOutput
+    ) -> TravelIntent:
+        slots = ExtractedSlots(
+            origin=llm_output.origin,
+            destination=llm_output.destination,
+            date=llm_output.date,
+            time=llm_output.time,
+            meeting_location=llm_output.meeting_location,
+            check_in=llm_output.check_in,
+            check_out=llm_output.check_out,
+            number_of_rooms=llm_output.number_of_rooms,
+            number_of_adults=llm_output.number_of_adults,
+            number_of_children=llm_output.number_of_children,
+            children_ages=llm_output.children_ages,
+            minimum_hotel_rating=llm_output.minimum_hotel_rating,
+            ride_type=llm_output.ride_type,
+        )
+
+        missing_slots = self._compute_missing_slots(llm_output.category, slots)
+
+        return TravelIntent(
+            raw_query=raw_query,
+            primary_category=llm_output.category,
+            slots=slots,
+            missing_slots=missing_slots,
+        )
+
+    def _compute_missing_slots(
+        self, category: IntentCategory, slots: ExtractedSlots
+    ) -> list[str]:
+        missing: list[str] = []
+
+        if category == IntentCategory.HOTEL_SEARCH:
+            if not slots.destination and not slots.meeting_location:
+                missing.append("destination")
+
+        elif category == IntentCategory.RIDE_SEARCH:
+            if not slots.origin:
+                missing.append("origin")
+            if not slots.destination:
+                missing.append("destination")
+
+        return missing

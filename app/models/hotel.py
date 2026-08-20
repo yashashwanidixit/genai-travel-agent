@@ -1,0 +1,47 @@
+from typing import List, Optional
+from pydantic import BaseModel, Field
+
+
+class RoomType(BaseModel):
+    id: str
+    name: str
+    price: float
+    capacity: int = 2
+    free_cancellation: bool = True
+
+
+class Hotel(BaseModel):
+    id: str
+    name: str
+    city: str
+    address: str
+    star_rating: int = Field(ge=1, le=5)
+    user_rating: float = Field(ge=0.0, le=5.0)
+    review_count: int = 0
+    price_per_night: float
+    currency: str = "INR"
+    amenities: List[str] = Field(default_factory=list)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    room_types: List[RoomType] = Field(default_factory=list)
+    score: Optional[float] = None
+
+
+class HotelSearchQuery(BaseModel):
+    city: str
+    check_in_date: Optional[str] = None
+    check_out_date: Optional[str] = None
+    min_stars: Optional[int] = 1
+    max_budget_per_night: Optional[float] = None
+    required_amenities: List[str] = Field(default_factory=list)
+    limit: int = 10
+
+
+class HotelBookingRequest(BaseModel):
+    hotel_id: str
+    room_id: str
+    user_id: str
+    check_in_date: str
+    check_out_date: str
+    guests: int = 1
+    special_requests: Optional[str] = None

@@ -1,0 +1,124 @@
+[
+  {
+    "id": "htl_001",
+    "name": "The Leela Palace Bengaluru",
+    "city": "Bengaluru",
+    "address": "Old Airport Road, Kodihalli, Bengaluru, Karnataka 560008",
+    "star_rating": 5,
+    "user_rating": 4.8,
+    "review_count": 3420,
+    "price_per_night": 16500.0,
+    "currency": "INR",
+    "amenities": ["Free WiFi", "Swimming Pool", "Spa & Wellness", "Fine Dining", "Fitness Center", "Airport Shuttle"],
+    "latitude": 12.9606,
+    "longitude": 77.6484,
+    "room_types": [
+      {
+        "id": "rm_001_deluxe",
+        "name": "Royal Premiere Room",
+        "price": 16500.0,
+        "capacity": 2,
+        "free_cancellation": true
+      },
+      {
+        "id": "rm_001_suite",
+        "name": "Executive Suite",
+        "price": 28000.0,
+        "capacity": 3,
+        "free_cancellation": true
+      }
+    ]
+  },
+  {
+    "id": "htl_002",
+    "name": "Taj West End",
+    "city": "Bengaluru",
+    "address": "Race Course Road, High Grounds, Bengaluru, Karnataka 560001",
+    "star_rating": 5,
+    "user_rating": 4.7,
+    "review_count": 2890,
+    "price_per_night": 14000.0,
+    "currency": "INR",
+    "amenities": ["Free WiFi", "Heritage Gardens", "Swimming Pool", "Spa", "Tennis Court", "Bar"],
+    "latitude": 12.9868,
+    "longitude": 77.5852,
+    "room_types": [
+      {
+        "id": "rm_002_garden",
+        "name": "Garden View Luxury Room",
+        "price": 14000.0,
+        "capacity": 2,
+        "free_cancellation": true
+      }
+    ]
+  },
+  {
+    "id": "htl_003",
+    "name": "JW Marriott Hotel Bengaluru",
+    "city": "Bengaluru",
+    "address": "24/1, Vittal Mallya Rd, KG Halli, Ashok Nagar, Bengaluru 560001",
+    "star_rating": 5,
+    "user_rating": 4.6,
+    "review_count": 4120,
+    "price_per_night": 13500.0,
+    "currency": "INR",
+    "amenities": ["Free WiFi", "Outdoor Pool", "Spa", "Cubbon Park View", "Restaurant", "Valet Parking"],
+    "latitude": 12.9719,
+    "longitude": 77.5955,
+    "room_types": [
+      {
+        "id": "rm_003_deluxe",
+        "name": "Deluxe City View",
+        "price": 13500.0,
+        "capacity": 2,
+        "free_cancellation": false
+      }
+    ]
+  },
+  {
+    "id": "htl_004",
+    "name": "Radisson Blu Atria Bengaluru",
+    "city": "Bengaluru",
+    "address": "1, Palace Rd, Ambedkar Veedhi, Bengaluru 560001",
+    "star_rating": 4,
+    "user_rating": 4.3,
+    "review_count": 1820,
+    "price_per_night": 6500.0,
+    "currency": "INR",
+    "amenities": ["Free WiFi", "Swimming Pool", "Fitness Center", "Restaurant", "Room Service"],
+    "latitude": 12.9832,
+    "longitude": 77.5878,
+    "room_types": [
+      {
+        "id": "rm_004_superior",
+        "name": "Superior Queen Room",
+        "price": 6500.0,
+        "capacity": 2,
+        "free_cancellation": true
+      }
+    ]
+  },
+  {
+    "id": "htl_005",
+    "name": "Bloomrooms @ Indiranagar",
+    "city": "Bengaluru",
+    "address": "100 Feet Rd, Indiranagar, Bengaluru 560038",
+    "star_rating": 3,
+    "user_rating": 4.2,
+    "review_count": 950,
+    "price_per_night": 3200.0,
+    "currency": "INR",
+    "amenities": ["Free High-Speed WiFi", "Cafe", "iMac Stations", "24/7 Front Desk"],
+    "latitude": 12.9716,
+    "longitude": 77.6412,
+    "room_types": [
+      {
+        "id": "rm_005_standard",
+        "name": "Standard King Room",
+        "price": 3200.0,
+        "capacity": 2,
+        "free_cancellation": true
+      }
+    ]
+  }
+]

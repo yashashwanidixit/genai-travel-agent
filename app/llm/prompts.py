@@ -20,6 +20,40 @@ Rules:
 - Return JSON only. No explanation, no markdown, no extra text.
 
 Special rules for minimum_hotel_rating:
+- The following phrases express an explicit minimum rating constraint
+  when a numeric rating is present:
+
+  "I don't want anything below 4.5."
+  → minimum_hotel_rating = 4.5
+
+  "I wouldn't want a hotel rated below 4.5."
+  → minimum_hotel_rating = 4.5
+
+  "I don't want hotels with a rating less than 4.5."
+  → minimum_hotel_rating = 4.5
+
+  "Only show me hotels with ratings of 4.5 or higher."
+  → minimum_hotel_rating = 4.5
+
+  "I would prefer a hotel with at least 4.5 rating."
+  → minimum_hotel_rating = 4.5
+
+- The important distinction is that a numeric threshold explicitly
+  stated by the user is a search constraint, even if it is expressed
+  indirectly using phrases such as "I wouldn't want", "avoid",
+  "don't show", or "not below".
+
+- Do NOT convert vague semantic preferences into a numeric value:
+
+  "I want highly rated hotels."
+  → minimum_hotel_rating = null
+
+  "I prefer good hotels."
+  → minimum_hotel_rating = null
+
+  "I usually choose hotels with excellent ratings."
+  → minimum_hotel_rating = null
+  
 - minimum_hotel_rating represents an EXPLICIT numeric floor the user
   states for THIS search only. It is NOT the rating of any specific
   hotel, and it is NOT a general/long-term preference.
@@ -62,13 +96,14 @@ Return JSON only. Respond with a single JSON object matching exactly this shape:
   "children_ages": array of integers or null,
   "minimum_hotel_rating": number or null,
   "ride_type": string or null
+  "max_hotel_price": number or null,
 }
 
 Field guidance:
 - For hotel requests: consider origin, destination, date, time,
   meeting_location, check_in, check_out, number_of_rooms,
   number_of_adults, number_of_children, children_ages,
-  minimum_hotel_rating.
+  minimum_hotel_rating,max_hotel_price.
 - For ride requests: consider origin, destination, date, time, ride_type.
   ride_type should be one of "bike", "scooty", "auto", "cab" if mentioned
   or clearly implied, otherwise null.
@@ -396,4 +431,48 @@ Output:
 origin = "Bangalore Airport"
 destination = "Whitefield"
 meeting_location = "Whitefield"  
+
+Special rules for max_hotel_price:
+
+- max_hotel_price represents the explicit maximum price the user wants
+  to pay for the hotel for the search.
+- Extract it only when the user explicitly gives a numeric price limit.
+- The value represents the maximum hotel price per night.
+- Preserve the numeric value without currency symbols or formatting.
+
+Examples:
+
+"Book me a hotel under ₹3000."
+→ max_hotel_price = 3000
+
+"I don't want to spend more than 2500 on the hotel."
+→ max_hotel_price = 2500
+
+"Find me a hotel below Rs 3500 per night."
+→ max_hotel_price = 3500
+
+"My hotel budget is ₹4000."
+→ max_hotel_price = 4000
+
+- Do not invent a price when the user does not specify one.
+
+Examples:
+
+"I need a hotel in Whitefield."
+→ max_hotel_price = null
+
+"I want a reasonably priced hotel."
+→ max_hotel_price = null
+
+"I want a cheap hotel."
+→ max_hotel_price = null
+
+- Do not convert vague words such as "cheap", "affordable",
+  "reasonable", or "budget-friendly" into a numeric value.
+
+- Do not infer a hotel price from the number of guests, rooms,
+  nights, or any other field.
+
+- Do not calculate a per-night price from a total trip budget unless
+  the user explicitly provides a per-night hotel budget.
 """

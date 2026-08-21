@@ -30,6 +30,7 @@ class ExtractedSlots(BaseModel):
     number_of_adults: Optional[int] = None
     number_of_children: Optional[int] = None
     children_ages: Optional[list[int]] = None
+    max_hotel_price: Optional[float] = None
 
     # Explicit hotel constraint for THIS search only.
     # NOT the hotel's actual rating, NOT a learned preference/weight.

@@ -17,23 +17,31 @@ class Hotel(BaseModel):
     address: str
     star_rating: int = Field(ge=1, le=5)
     user_rating: float = Field(ge=0.0, le=5.0)
-    review_count: int = 0
+ 
     price_per_night: float
     currency: str = "INR"
-    amenities: List[str] = Field(default_factory=list)
+    
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     room_types: List[RoomType] = Field(default_factory=list)
-    score: Optional[float] = None
+
 
 
 class HotelSearchQuery(BaseModel):
-    city: str
+    location: str
+
     check_in_date: Optional[str] = None
     check_out_date: Optional[str] = None
-    min_stars: Optional[int] = 1
+
+    number_of_rooms: int = 1
+    number_of_adults: int = 1
+    number_of_children: int = 0
+    children_ages: List[int] = Field(default_factory=list)
+
+    min_stars: Optional[int] = None
     max_budget_per_night: Optional[float] = None
-    required_amenities: List[str] = Field(default_factory=list)
+   
+
     limit: int = 10
 
 

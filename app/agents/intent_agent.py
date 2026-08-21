@@ -40,6 +40,7 @@ class _LLMIntentOutput(BaseModel):
     children_ages: Optional[list[int]] = None
     minimum_hotel_rating: Optional[float] = None
     ride_type: Optional[str] = None
+    max_hotel_price: Optional[float] = None
 
 
 class IntentAgent:
@@ -184,6 +185,9 @@ class IntentAgent:
             children_ages=llm_output.children_ages,
             minimum_hotel_rating=llm_output.minimum_hotel_rating,
             ride_type=llm_output.ride_type,
+            max_hotel_price= llm_output.max_hotel_price, 
+            
+            
         )
 
         # missing_slots is intentionally left empty here. It is owned

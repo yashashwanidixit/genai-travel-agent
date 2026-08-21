@@ -18,6 +18,8 @@ def normalize_time(value: Optional[str]) -> Optional[str]:
     unchanged rather than guessed at — this must never invent a time.
     Relative dates ("tomorrow") are handled by normalize_intent, not
     here, and are always preserved as-is.
+     max_hotel_price is deterministically normalized to a float but is
+    never inferred or calculated from other fields.
     """
     if value is None:
         return None
@@ -74,6 +76,29 @@ def normalize_ride_type(value: Optional[str]) -> Optional[str]:
     normalized = value.strip().lower()
     return normalized if normalized else None
 
+def normalize_price(value: Optional[float]) -> Optional[float]:
+    """Normalizes an explicitly extracted hotel price.
+
+    Converts the value to a float and ensures it is non-negative.
+    Does not infer or calculate prices from other fields.
+    Does not convert vague expressions such as 'cheap' or 'affordable'
+    into a numeric value.
+
+    Returns None when no price was extracted.
+    """
+    if value is None:
+        return None
+
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError):
+        return value
+
+    if normalized < 0:
+        return value
+
+    return normalized
+
 
 def normalize_intent(intent: TravelIntent) -> TravelIntent:
     """Takes a raw LLM-extracted TravelIntent and returns a new
@@ -99,6 +124,7 @@ def normalize_intent(intent: TravelIntent) -> TravelIntent:
             "check_in": normalize_string(slots.check_in),
             "check_out": normalize_string(slots.check_out),
             "ride_type": normalize_ride_type(slots.ride_type),
+            "max_hotel_price": normalize_price(slots.max_hotel_price),
         }
     )
 

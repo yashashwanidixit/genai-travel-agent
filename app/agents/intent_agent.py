@@ -45,9 +45,12 @@ class _LLMIntentOutput(BaseModel):
 class IntentAgent:
     """User query -> LLMProvider -> JSON -> Pydantic -> TravelIntent.
 
-    Unchanged extraction/validation/retry logic from before. The only
-    addition is wall-clock performance tracking around the whole parse
-    and around the LLM call specifically, returned via parse_with_metrics().
+    IMPORTANT (Part 13 separation of responsibilities): this agent's
+    job is ONLY semantic extraction. It does NOT decide missing_slots
+    anymore - that determination is now owned exclusively by
+    app.orchestration.requirement_checker, which runs on the
+    normalized intent downstream. This agent always returns an empty
+    missing_slots list; treat it as a placeholder, not a signal.
     """
 
     def __init__(self, llm_provider: LLMProvider, max_retries: int = 1):
@@ -56,16 +59,12 @@ class IntentAgent:
         self._cold_start_tracker = ColdStartTracker()
 
     def parse(self, raw_query: str) -> TravelIntent:
-        """Original interface, unchanged behavior — no metrics returned."""
         intent, _ = self.parse_with_metrics(raw_query)
         return intent
 
     def parse_with_metrics(
         self, raw_query: str
     ) -> tuple[TravelIntent, PerformanceMetrics]:
-        """Same parsing logic as parse(), plus a PerformanceMetrics record
-        describing total time, LLM-only time, and overhead.
-        """
         total_timer = PerformanceTimer()
         total_timer.start()
 
@@ -77,9 +76,6 @@ class IntentAgent:
             for _ in range(self.max_retries + 1):
                 user_prompt = self._build_user_prompt(raw_query, last_error)
 
-                # Prefer the metadata-aware call if the provider supports
-                # it (OllamaProvider does); fall back gracefully otherwise
-                # so this still works with any LLMProvider implementation.
                 if hasattr(
                     self.llm_provider, "generate_structured_with_metadata"
                 ):
@@ -144,7 +140,6 @@ class IntentAgent:
             raise IntentParsingError(error_message)
 
         except RuntimeError as exc:
-            # Provider-level failure (connection error, timeout, HTTP error).
             total_time = total_timer.stop()
             metrics = PerformanceMetrics(
                 status="FAILED",
@@ -191,28 +186,12 @@ class IntentAgent:
             ride_type=llm_output.ride_type,
         )
 
-        missing_slots = self._compute_missing_slots(llm_output.category, slots)
-
+        # missing_slots is intentionally left empty here. It is owned
+        # by app.orchestration.requirement_checker, which runs on the
+        # normalized intent (see conversation_manager.start_new_intent).
         return TravelIntent(
             raw_query=raw_query,
             primary_category=llm_output.category,
             slots=slots,
-            missing_slots=missing_slots,
+            missing_slots=[],
         )
-
-    def _compute_missing_slots(
-        self, category: IntentCategory, slots: ExtractedSlots
-    ) -> list[str]:
-        missing: list[str] = []
-
-        if category == IntentCategory.HOTEL_SEARCH:
-            if not slots.destination and not slots.meeting_location:
-                missing.append("destination")
-
-        elif category == IntentCategory.RIDE_SEARCH:
-            if not slots.origin:
-                missing.append("origin")
-            if not slots.destination:
-                missing.append("destination")
-
-        return missing

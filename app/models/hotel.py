@@ -42,7 +42,7 @@ class HotelSearchQuery(BaseModel):
     max_budget_per_night: Optional[float] = None
    
 
-    limit: int = 10
+    limit: int = Field(default=10, ge=1)
 
 
 class HotelBookingRequest(BaseModel):

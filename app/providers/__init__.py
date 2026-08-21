@@ -1,17 +1,6 @@
-from app.providers.hotels.base import BaseHotelProvider
-from app.providers.hotels.mock import MockHotelProvider
-from app.providers.hotels.api import ApiHotelProvider
-from app.providers.hotels.appium import AppiumHotelProvider
-from app.providers.rides.base import BaseRideProvider
-from app.providers.rides.mock import MockRideProvider
-from app.providers.rides.appium import AppiumRideProvider
+"""Provider abstractions for external/mock data sources.
 
-__all__ = [
-    "BaseHotelProvider",
-    "MockHotelProvider",
-    "ApiHotelProvider",
-    "AppiumHotelProvider",
-    "BaseRideProvider",
-    "MockRideProvider",
-    "AppiumRideProvider",
-]
+Downstream code (search orchestration, future recommendation) should
+depend on the HotelProvider interface, never on a concrete
+implementation like MockHotelProvider directly.
+"""

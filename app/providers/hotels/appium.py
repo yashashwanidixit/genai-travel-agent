@@ -1,13 +1,13 @@
 import uuid
 from typing import List, Optional
-from app.providers.hotels.base import BaseHotelProvider
+from app.providers.hotels.base import HotelProvider
 from app.models.hotel import Hotel, HotelSearchQuery, HotelBookingRequest
 from app.models.booking import BookingConfirmation, BookingType, BookingStatus
 from app.automation.appium_client import AppiumClient
 from app.automation.device_manager import DeviceManager
 
 
-class AppiumHotelProvider(BaseHotelProvider):
+class AppiumHotelProvider(HotelProvider):
     """UI Automation Provider for booking hotels through Android mobile apps using Appium."""
 
     def __init__(self, appium_client: Optional[AppiumClient] = None):

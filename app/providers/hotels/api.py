@@ -2,12 +2,12 @@ import os
 import uuid
 from typing import List, Optional
 import httpx
-from app.providers.hotels.base import BaseHotelProvider
+from app.providers.hotels.base import HotelProvider
 from app.models.hotel import Hotel, HotelSearchQuery, HotelBookingRequest
 from app.models.booking import BookingConfirmation, BookingType, BookingStatus
 
 
-class ApiHotelProvider(BaseHotelProvider):
+class ApiHotelProvider(HotelProvider):
     """External API integration for live hotel aggregators (e.g. Amadeus/Booking.com API)."""
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):

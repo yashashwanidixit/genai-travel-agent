@@ -1,0 +1,1 @@
+"""Static/mock data used during early development stages."""

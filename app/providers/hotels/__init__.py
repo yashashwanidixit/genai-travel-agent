@@ -1,6 +1,6 @@
-from app.providers.hotels.base import HotelProvider
-from app.providers.hotels.mock import MockHotelProvider
-from app.providers.hotels.api import ApiHotelProvider
-from app.providers.hotels.appium import AppiumHotelProvider
+"""Hotel provider implementations.
 
-__all__ = ["HotelProvider", "MockHotelProvider", "ApiHotelProvider", "AppiumHotelProvider"]
+All concrete providers (mock, api, appium) implement the HotelProvider
+contract defined in base.py. Downstream code should depend on that
+contract, not on a specific implementation.
+"""

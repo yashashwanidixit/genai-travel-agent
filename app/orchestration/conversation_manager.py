@@ -76,3 +76,4 @@ class ConversationManager:
         else:
             self._pending = checked_intent
             self._awaiting_slot = checked_intent.missing_slots[0]
+            

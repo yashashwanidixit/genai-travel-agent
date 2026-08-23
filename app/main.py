@@ -131,6 +131,7 @@ def main() -> None:
 
         intent = conversation.start_new_intent(raw_intent)
         question = conversation.current_question()
+        
         if question is not None:
             _print_missing(intent, question, updated=False)
         else:

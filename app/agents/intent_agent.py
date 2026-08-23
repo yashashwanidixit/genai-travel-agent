@@ -76,7 +76,7 @@ class IntentAgent:
         try:
             for _ in range(self.max_retries + 1):
                 user_prompt = self._build_user_prompt(raw_query, last_error)
-
+                
                 if hasattr(
                     self.llm_provider, "generate_structured_with_metadata"
                 ):
@@ -90,6 +90,7 @@ class IntentAgent:
                         )
                     )
                     raw_response = call_result.text
+                    
                     llm_time_accum += call_result.llm_time
                 else:
                     llm_timer = PerformanceTimer()
@@ -97,7 +98,12 @@ class IntentAgent:
                     raw_response = self.llm_provider.generate_structured(
                         INTENT_SYSTEM_PROMPT, user_prompt
                     )
+                    
                     llm_time_accum += llm_timer.stop()
+                print("\n[DEBUG] User prompt sent to LLM:")
+                print(user_prompt)    
+                print("\n[DEBUG] Raw LLM response:")
+                print(raw_response)    
 
                 try:
                     parsed_json = json.loads(raw_response)

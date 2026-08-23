@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.intent import TravelIntent
+from app.models.intent import TravelIntent, IntentCategory
 
 
 def validate_destination(intent: TravelIntent) -> TravelIntent:

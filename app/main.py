@@ -6,7 +6,7 @@ from app.models.hotel import Hotel
 from app.models.intent import IntentCategory, TravelIntent
 from app.orchestration.conversation_manager import ConversationManager
 from app.orchestration.hotel_search_flow import maybe_search_hotels
-
+from app.validation.intent_validator import validate_destination
 
 def _print_ollama_config(provider: OllamaProvider) -> None:
     print("\n[Ollama] Connected")
@@ -121,6 +121,8 @@ def main() -> None:
 
         try:
             raw_intent = agent.parse(user_text)
+            validated_intent = validate_destination(raw_intent)
+            print(f"validated_intent:{validated_intent}")
         except IntentParsingError as exc:
             print(f"\nCould not understand that request: {exc}\n")
             continue

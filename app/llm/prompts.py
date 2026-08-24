@@ -133,7 +133,9 @@ Respond with a single JSON object matching exactly this shape:
   "children_ages": array of integers or null,
   "minimum_hotel_rating": number or null,
   "ride_type": string or null,
-  "max_hotel_price": number or null
+  "max_hotel_price": number or null,
+  "max_hotel_distance_km" : number or null,
+  
 }
 
 Field guidance:

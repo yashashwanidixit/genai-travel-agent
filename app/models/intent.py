@@ -38,6 +38,7 @@ class ExtractedSlots(BaseModel):
     # by the user for the current search." Must stay null unless the
     # user gives an explicit numeric (or clearly-implied numeric) floor.
     minimum_hotel_rating: Optional[float] = None
+    max_hotel_distance_km: Optional[float] = None
 
     # Ride-specific
     ride_type: Optional[str] = None

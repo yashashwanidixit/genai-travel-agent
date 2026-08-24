@@ -23,7 +23,7 @@ from app.models.intent import IntentCategory, TravelIntent
 from app.orchestration.hotel_query_adapter import travel_intent_to_hotel_search_query
 from app.providers.hotels.base import HotelProvider
 from app.providers.hotels.mock import MockHotelProvider
-from app.constraints.hotel import filter_hotels
+from app.constraints.hotel import filter_hotel_contexts
 
 # A single shared default provider instance. Callers (e.g. main.py)
 # can still pass their own HotelProvider - the function depends on the
@@ -62,4 +62,4 @@ def maybe_search_hotels(
     # Stage 2B: retrieval and filtering are deliberately separate
     # steps, so MockHotelProvider stays a pure retrieval component
     # and the constraint logic stays swappable/testable on its own.
-    return filter_hotels(retrieved, intent)
+    return filter_hotel_contexts(retrieved, intent)

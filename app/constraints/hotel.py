@@ -29,6 +29,7 @@ from typing import List
 
 from app.models.hotel import Hotel
 from app.models.intent import TravelIntent
+from app.models.hotel_context import HotelContext
 
 
 def _passes_rating_constraint(hotel: Hotel, minimum_hotel_rating: float | None) -> bool:
@@ -73,5 +74,78 @@ def filter_hotels(hotels: List[Hotel], intent: TravelIntent) -> List[Hotel]:
             hotel, minimum_hotel_rating
         ) and _passes_price_constraint(hotel, max_hotel_price):
             eligible.append(hotel)
+
+    return eligible
+
+
+def filter_hotel_contexts(
+    hotel_contexts: list[HotelContext],
+    intent: TravelIntent,
+) -> list[HotelContext]:
+    """Apply explicit hard constraints to hotel contexts.
+
+    Supported hard constraints:
+        - maximum hotel price
+        - minimum hotel rating
+        - maximum hotel distance
+
+    This function ONLY filters.
+
+    It does not:
+        - calculate distance
+        - calculate recommendation scores
+        - normalize features
+        - apply user-profile weights
+        - rank hotels
+        - mutate HotelContext or Hotel objects
+    """
+
+    eligible: list[HotelContext] = []
+
+    max_price = intent.slots.max_hotel_price
+    minimum_rating = intent.slots.minimum_hotel_rating
+    max_distance = intent.slots.max_hotel_distance_km
+
+    for context in hotel_contexts:
+
+        hotel = context.hotel
+
+        # ---------------------------------------------------------------
+        # HARD PRICE CONSTRAINT
+        # ---------------------------------------------------------------
+
+        if (
+            max_price is not None
+            and hotel.price_per_night > max_price
+        ):
+            continue
+
+        # ---------------------------------------------------------------
+        # HARD RATING CONSTRAINT
+        # ---------------------------------------------------------------
+
+        if (
+            minimum_rating is not None
+            and hotel.user_rating < minimum_rating
+        ):
+            continue
+
+        # ---------------------------------------------------------------
+        # HARD DISTANCE CONSTRAINT
+        # ---------------------------------------------------------------
+
+        if max_distance is not None:
+
+            # A distance constraint was explicitly requested, but we
+            # don't have a distance to evaluate it against.
+            #
+            # Do NOT treat None as "passes".
+            if context.distance_km is None:
+                continue
+
+            if context.distance_km > max_distance:
+                continue
+
+        eligible.append(context)
 
     return eligible

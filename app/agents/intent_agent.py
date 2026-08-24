@@ -41,6 +41,7 @@ class _LLMIntentOutput(BaseModel):
     minimum_hotel_rating: Optional[float] = None
     ride_type: Optional[str] = None
     max_hotel_price: Optional[float] = None
+    max_hotel_distance_km: Optional[float] = None
 
 
 class IntentAgent:
@@ -192,7 +193,7 @@ class IntentAgent:
             minimum_hotel_rating=llm_output.minimum_hotel_rating,
             ride_type=llm_output.ride_type,
             max_hotel_price= llm_output.max_hotel_price, 
-            
+            max_hotel_distance_km=llm_output.max_hotel_distance_km,
             
         )
 

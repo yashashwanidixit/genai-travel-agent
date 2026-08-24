@@ -2,7 +2,7 @@ from typing import List, Optional
 from app.models.hotel import Hotel
 from app.models.ride import RideEstimate
 from app.models.user import UserPreferences
-from app.recommendation.features import FeatureExtractor
+from app.recommendation.feature_extraction import FeatureExtractor
 from app.recommendation.normalizer import Normalizer
 from app.recommendation.scorer import WeightedScorer
 

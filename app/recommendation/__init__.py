@@ -1,6 +1,8 @@
-from app.recommendation.features import FeatureExtractor
-from app.recommendation.normalizer import Normalizer
-from app.recommendation.scorer import WeightedScorer
-from app.recommendation.ranker import TravelRanker
+"""Recommendation layer.
 
-__all__ = ["FeatureExtractor", "Normalizer", "WeightedScorer", "TravelRanker"]
+This package starts with R1 (feature extraction) only. Future stages
+(R2 utility normalization, R3 basic recommendation, preference fusion,
+ranking, exploration) will be added incrementally as separate modules
+so each stage stays independently testable and none of them collapse
+into a single monolithic "RecommendationEngine".
+"""

@@ -57,4 +57,4 @@ def _update_missing_destination(intent: TravelIntent) -> TravelIntent:
 
     return intent.model_copy(
         update={"missing_slots": missing}
-    )
+)

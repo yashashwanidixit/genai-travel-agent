@@ -19,7 +19,7 @@ import pytest
 from app.models.hotel import Hotel
 from app.models.hotel_context import HotelContext
 from app.models.location import ResolvedLocation
-from app.services.distance_calculator import (
+from app.services.routing.distance_calculator import (
     DistanceCalculationError,
     DistanceCalculator,
 )

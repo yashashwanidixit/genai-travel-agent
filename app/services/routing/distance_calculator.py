@@ -1,20 +1,19 @@
 """
-Distance calculation between a resolved reference location and hotels.
+Haversine-based routing implementation.
 
-Current implementation:
-    Haversine / great-circle distance.
-
-This is intentionally a temporary deterministic implementation.
+This is currently a deterministic local implementation used for development
+and testing.
 
 IMPORTANT:
-- It does NOT use GraphHopper yet.
+- It does NOT use GraphHopper.
+- It does NOT calculate road distance.
+- It calculates great-circle/geographic distance.
 - It does NOT modify Hotel objects.
 - It returns new HotelContext objects.
-- It uses the latitude/longitude already available on Hotel.
-- It calculates straight-line geographic distance, NOT road distance.
 
-A future GraphHopper implementation can replace this service while keeping
-the HotelContext contract unchanged.
+A future GraphHopper implementation will implement the same RoutingService
+interface and can replace this implementation without changing downstream
+code.
 """
 
 from __future__ import annotations
@@ -24,18 +23,19 @@ from math import asin, cos, radians, sin, sqrt
 from app.models.hotel import Hotel
 from app.models.hotel_context import HotelContext
 from app.models.location import ResolvedLocation
+from app.services.routing.base import RoutingError, RoutingService
 
 
-class DistanceCalculationError(Exception):
-    """Raised when distance cannot be calculated for a hotel."""
+class DistanceCalculationError(RoutingError):
+    """Raised when Haversine distance cannot be calculated."""
 
     pass
 
 
-class DistanceCalculator:
-    """Calculate search-context distance for hotels.
+class HaversineDistanceCalculator(RoutingService):
+    """Calculate geographic distance using the Haversine formula.
 
-    Current implementation uses Haversine distance.
+    This implementation satisfies the RoutingService contract.
 
     Input:
         ResolvedLocation
@@ -56,31 +56,24 @@ class DistanceCalculator:
     ) -> list[HotelContext]:
         """Calculate distance from the reference location to every hotel.
 
-        Args:
-            reference_location:
-                The user's resolved meeting/reference location.
+        If reference_location is None, the hotels are still wrapped in
+        HotelContext objects, but distance_km is None.
 
-                If None, no distance can be calculated. In that case,
-                HotelContext objects are returned with distance_km=None.
+        This is important because a user may request:
 
-            hotels:
-                Hotels for which contextual distance should be calculated.
+            "I want a hotel in Whitefield."
 
-        Returns:
-            A new list of HotelContext objects.
+        without specifying a meeting/reference location.
 
-        Raises:
-            DistanceCalculationError:
-                If a hotel has only one coordinate or has invalid
-                coordinates.
+        In that case we must NOT use the destination as the reference point.
         """
 
         contexts: list[HotelContext] = []
 
         for hotel in hotels:
             distance_km = self._calculate_hotel_distance(
-                reference_location,
-                hotel,
+                reference_location=reference_location,
+                hotel=hotel,
             )
 
             contexts.append(
@@ -97,31 +90,33 @@ class DistanceCalculator:
         reference_location: ResolvedLocation | None,
         hotel: Hotel,
     ) -> float | None:
-        """Calculate one hotel's distance from the reference location."""
+        """Calculate one hotel's geographic distance."""
 
         # No reference location means there is no meaningful distance.
         if reference_location is None:
             return None
 
-        # Hotel coordinates are required to calculate distance.
-        #
-        # We deliberately do not guess or geocode them here.
+        # Both hotel coordinates are required.
         if hotel.latitude is None or hotel.longitude is None:
             raise DistanceCalculationError(
                 f"Cannot calculate distance for hotel '{hotel.id}': "
                 "hotel latitude/longitude is missing."
             )
 
+        # Validate reference coordinates.
         self._validate_coordinates(
-            reference_location.latitude,
-            reference_location.longitude,
-            f"reference location '{reference_location.name}'",
+            latitude=reference_location.latitude,
+            longitude=reference_location.longitude,
+            location_description=(
+                f"reference location '{reference_location.name}'"
+            ),
         )
 
+        # Validate hotel coordinates.
         self._validate_coordinates(
-            hotel.latitude,
-            hotel.longitude,
-            f"hotel '{hotel.id}'",
+            latitude=hotel.latitude,
+            longitude=hotel.longitude,
+            location_description=f"hotel '{hotel.id}'",
         )
 
         return self._haversine_distance(
@@ -144,8 +139,12 @@ class DistanceCalculator:
         lat1 = radians(reference_latitude)
         lat2 = radians(hotel_latitude)
 
-        delta_lat = radians(hotel_latitude - reference_latitude)
-        delta_lon = radians(hotel_longitude - reference_longitude)
+        delta_lat = radians(
+            hotel_latitude - reference_latitude
+        )
+        delta_lon = radians(
+            hotel_longitude - reference_longitude
+        )
 
         a = (
             sin(delta_lat / 2) ** 2
@@ -164,14 +163,16 @@ class DistanceCalculator:
         longitude: float,
         location_description: str,
     ) -> None:
-        """Validate latitude/longitude before performing calculations."""
+        """Validate latitude and longitude."""
 
         if not -90 <= latitude <= 90:
             raise DistanceCalculationError(
-                f"Invalid latitude for {location_description}: {latitude}"
+                f"Invalid latitude for "
+                f"{location_description}: {latitude}"
             )
 
         if not -180 <= longitude <= 180:
             raise DistanceCalculationError(
-                f"Invalid longitude for {location_description}: {longitude}"
+                f"Invalid longitude for "
+                f"{location_description}: {longitude}"
             )

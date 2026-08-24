@@ -7,6 +7,16 @@ from app.models.intent import IntentCategory, TravelIntent
 from app.orchestration.conversation_manager import ConversationManager
 from app.orchestration.hotel_search_flow import maybe_search_hotels
 from app.validation.intent_validator import validate_destination
+from app.services.location_resolver import LocationResolver
+from app.services.routing.distance_calculator import (
+    HaversineDistanceCalculator,
+)
+from app.orchestration.hotel_context_flow import build_hotel_contexts
+
+
+location_resolver = LocationResolver()
+routing_service = HaversineDistanceCalculator()
+
 
 def _print_ollama_config(provider: OllamaProvider) -> None:
     print("\n[Ollama] Connected")
@@ -64,18 +74,45 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
     # maybe_search_hotels() itself enforces this gate, but the check
     # is repeated here so we only print the query/results section for
     # hotel searches, not ride searches.
-    """    
+       
     if intent.primary_category == IntentCategory.HOTEL_SEARCH:
         hotels = maybe_search_hotels(intent)
+
         if hotels is not None:
+            hotel_contexts = build_hotel_contexts(
+                intent=intent,
+                hotels=hotels,
+                location_resolver=location_resolver,
+                routing_service=routing_service,
+            )
+
             print("Hotel Search Query:")
-            location = intent.slots.destination or intent.slots.meeting_location
+            location = (
+                intent.slots.destination
+                or intent.slots.meeting_location
+            )
+
             print(f"location: {location}")
             print(f"adults: {intent.slots.number_of_adults or 1}")
             print(f"children: {intent.slots.number_of_children or 0}")
             print(f"rooms: {intent.slots.number_of_rooms or 1}")
+
             _print_hotels(hotels)
-    """
+
+            print("\nHotel Contexts:")
+            for context in hotel_contexts:
+                hotel = context.hotel
+
+                print(f"{hotel.name}")
+
+                if context.distance_km is not None:
+                    print(
+                        f"   Distance: "
+                        f"{context.distance_km:.2f} km"
+                    )
+                else:
+                    print("   Distance: unavailable")
+    
         
 
 
@@ -97,6 +134,7 @@ def main() -> None:
     llm_provider = OllamaProvider()
     agent = IntentAgent(llm_provider)
     conversation = ConversationManager()
+
 
     while True:
         try:

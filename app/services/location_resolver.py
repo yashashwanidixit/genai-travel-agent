@@ -55,6 +55,7 @@ _LOCATION_TABLE: dict[str, ResolvedLocation] = {
 
 _LOCATION_ALIASES: dict[str, str] = {
     "google office": "google office whitefield",
+    "google ananta office": "google office whitefield",
     "google office in whitefield": "google office whitefield",
     "google whitefield": "google office whitefield",
     "google whitefield office": "google office whitefield",

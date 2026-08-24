@@ -1,75 +1,51 @@
-"""R1 — Recommendation Feature Extraction.
-
-Answers ONLY: "what factual properties does this hotel have that a
-future recommendation system may need?"
-
-R1 extracts RAW FACTS from a Hotel. It does not:
-- convert facts into [0,1] utilities (that is a future R2 stage)
-- apply any weighting or scoring (that is a future R3+ stage)
-- know anything about UserProfile or user preferences (those belong
-  to a different data domain - HotelFeatures describes the hotel,
-  UserProfile describes the user, and R1 must not couple the two)
-
-Architecture:
-
-    Hotel
-       |
-    extract_features()
-       |
-    HotelFeatures  (raw price, raw rating, distance-or-None)
-
-The extractor never mutates the Hotel it's given - it only reads from
-it and returns a brand new HotelFeatures object.
-"""
-
-from __future__ import annotations
-
-from typing import Optional
-
-from pydantic import BaseModel
-
+from typing import Dict, List, Any
 from app.models.hotel import Hotel
+from app.models.ride import RideEstimate
+from app.models.user import UserPreferences
 
 
-class HotelFeatures(BaseModel):
-    """Raw factual features extracted from a single Hotel.
+class FeatureExtractor:
+    """Extracts normalized numerical and categorical signals from travel candidates."""
 
-    These are facts, not utilities and not scores. A future R2 stage
-    is responsible for converting these into normalized [0,1]-style
-    utilities; R1 must never do that conversion itself.
-    """
+    @staticmethod
+    def extract_hotel_features(hotel: Hotel, prefs: UserPreferences) -> Dict[str, float]:
+        # Star alignment
+        star_diff = abs(hotel.star_rating - prefs.preferred_hotel_stars)
+        star_match = max(0.0, 1.0 - (star_diff / 4.0))
 
-    price: float
-    rating: float
-    distance_km: Optional[float] = None
+        # Amenity overlap
+        matching_amenities = sum(1 for a in prefs.preferred_amenities if a in hotel.amenities)
+        amenity_score = (
+            matching_amenities / len(prefs.preferred_amenities)
+            if prefs.preferred_amenities
+            else 1.0
+        )
 
+        # Budget fit
+        budget_ratio = (
+            prefs.max_hotel_budget_per_night / hotel.price_per_night
+            if hotel.price_per_night > 0
+            else 1.0
+        )
+        budget_score = min(1.0, budget_ratio)
 
-def extract_features(hotel: Hotel) -> HotelFeatures:
-    """Extracts raw, factual features from a single Hotel.
+        return {
+            "price": hotel.price_per_night,
+            "rating": hotel.user_rating,
+            "review_count": float(hotel.review_count),
+            "star_match": star_match,
+            "amenity_score": amenity_score,
+            "budget_score": budget_score,
+        }
 
-    price  -> hotel.price_per_night, unchanged
-    rating -> hotel.user_rating (NOT star_rating - user_rating is the
-              rating feature the current recommendation design uses,
-              since it reflects real guest experience rather than an
-              official star classification)
-    distance_km -> always None right now.
+    @staticmethod
+    def extract_ride_features(ride: RideEstimate, prefs: UserPreferences) -> Dict[str, float]:
+        type_match = 1.0 if ride.ride_type.value.lower() == prefs.preferred_ride_type.lower() else 0.5
 
-    WHY distance is always None: computing a real distance requires a
-    reference location (e.g. coordinates for "Whitefield", or the
-    user's current location) to measure against. Nothing in the
-    current architecture - HotelSearchQuery, TravelIntent, or
-    anywhere else - currently carries such a reference coordinate.
-    HotelSearchQuery.location is a plain string like "Whitefield", not
-    a lat/lng pair. Rather than invent, hardcode, or geocode a
-    coordinate (explicitly forbidden), R1 leaves distance_km unset
-    until a reliable reference location genuinely exists in the
-    architecture. This keeps the feature interface ready for that
-    future addition without fabricating data today.
-
-    Does not mutate the given Hotel object.
-    """
-    return HotelFeatures(
-        price=hotel.price_per_night,
-        rating=hotel.user_rating,
-        distance_km=None,
-    )
+        return {
+            "fare": ride.estimated_fare,
+            "duration": float(ride.duration_minutes),
+            "distance": float(ride.distance_km),
+            "eta_pickup": float(ride.eta_pickup_minutes),
+            "type_match": type_match,
+        }

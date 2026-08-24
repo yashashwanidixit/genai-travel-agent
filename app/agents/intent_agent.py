@@ -100,10 +100,7 @@ class IntentAgent:
                     )
                     
                     llm_time_accum += llm_timer.stop()
-                print("\n[DEBUG] User prompt sent to LLM:")
-                print(user_prompt)    
-                print("\n[DEBUG] Raw LLM response:")
-                print(raw_response)    
+                 
 
                 try:
                     parsed_json = json.loads(raw_response)
@@ -119,6 +116,9 @@ class IntentAgent:
                         f"schema: {exc}"
                     )
                     continue
+                
+                print("\n[DEBUG] Raw LLM response:")
+                print(raw_response)  
 
                 intent = self._to_travel_intent(raw_query, llm_output)
                 total_time = total_timer.stop()

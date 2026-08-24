@@ -48,3 +48,4 @@ class TravelIntent(BaseModel):
     primary_category: IntentCategory
     slots: ExtractedSlots
     missing_slots: list[str]
+    

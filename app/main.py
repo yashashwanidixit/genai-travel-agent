@@ -64,6 +64,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
     # maybe_search_hotels() itself enforces this gate, but the check
     # is repeated here so we only print the query/results section for
     # hotel searches, not ride searches.
+    """    
     if intent.primary_category == IntentCategory.HOTEL_SEARCH:
         hotels = maybe_search_hotels(intent)
         if hotels is not None:
@@ -74,6 +75,8 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
             print(f"children: {intent.slots.number_of_children or 0}")
             print(f"rooms: {intent.slots.number_of_rooms or 1}")
             _print_hotels(hotels)
+    """
+        
 
 
 def _print_missing(intent: TravelIntent, question: str, updated: bool) -> None:
@@ -122,7 +125,7 @@ def main() -> None:
         try:
             raw_intent = agent.parse(user_text)
             validated_intent = validate_destination(raw_intent)
-            print(f"validated_intent:{validated_intent}")
+         
         except IntentParsingError as exc:
             print(f"\nCould not understand that request: {exc}\n")
             continue

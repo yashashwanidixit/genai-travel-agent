@@ -2,7 +2,7 @@ from typing import List, Optional
 from app.models.hotel import Hotel
 from app.models.ride import RideEstimate
 from app.models.user import UserPreferences
-from app.recommendation.feature_extraction import FeatureExtractor
+from app.recommendation.feature_extraction import extract_features
 from app.recommendation.normalizer import Normalizer
 from app.recommendation.scorer import WeightedScorer
 
@@ -10,8 +10,8 @@ from app.recommendation.scorer import WeightedScorer
 class TravelRanker:
     """Ranks hotels and rides based on user preferences, pricing, and ratings."""
 
-    def __init__(self, feature_extractor: Optional[FeatureExtractor] = None, scorer: Optional[WeightedScorer] = None):
-        self.feature_extractor = feature_extractor or FeatureExtractor()
+    def __init__(self, feature_extractor: Optional[extract_features] = None, scorer: Optional[WeightedScorer] = None):
+        self.feature_extractor = feature_extractor or extract_features()
         self.scorer = scorer or WeightedScorer()
 
     def rank_hotels(self, hotels: List[Hotel], prefs: UserPreferences) -> List[Hotel]:

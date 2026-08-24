@@ -73,11 +73,13 @@ class IntentAgent:
         llm_time_accum = 0.0
         last_error: Optional[str] = None
         possible_cold_start = False
+        attempt =1
 
         try:
             for _ in range(self.max_retries + 1):
                 user_prompt = self._build_user_prompt(raw_query, last_error)
-                
+               
+                print(f"\n[DEBUG] LLM attempt {attempt + 1}")
                 if hasattr(
                     self.llm_provider, "generate_structured_with_metadata"
                 ):
@@ -107,6 +109,7 @@ class IntentAgent:
                     parsed_json = json.loads(raw_response)
                 except json.JSONDecodeError as exc:
                     last_error = f"Your last response was not valid JSON: {exc}"
+                    attempt+=1
                     continue
 
                 try:
@@ -116,6 +119,7 @@ class IntentAgent:
                         "Your last response did not match the required "
                         f"schema: {exc}"
                     )
+                    attempt+=1
                     continue
                 
                 print("\n[DEBUG] Raw LLM response:")
@@ -130,6 +134,7 @@ class IntentAgent:
                     overhead_time=max(total_time - llm_time_accum, 0.0),
                     possible_cold_start=possible_cold_start,
                 )
+                print(f"time by {attempt} call: {total_time}")
                 return intent, metrics
 
             total_time = total_timer.stop()

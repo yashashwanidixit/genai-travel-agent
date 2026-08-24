@@ -12,8 +12,10 @@ from app.services.routing.distance_calculator import (
     HaversineDistanceCalculator,
 )
 from app.orchestration.hotel_context_flow import build_hotel_contexts
+from app.constraints.hotel import filter_hotel_contexts
 
-
+location_resolver = LocationResolver()
+routing_service = HaversineDistanceCalculator()
 
 
 def _print_ollama_config(provider: OllamaProvider) -> None:
@@ -74,43 +76,52 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
     # hotel searches, not ride searches.
        
     if intent.primary_category == IntentCategory.HOTEL_SEARCH:
-    hotels = maybe_search_hotels(intent)
+        hotels = maybe_search_hotels(intent)
+        
 
-    if hotels is not None:
-        hotel_contexts = build_hotel_contexts(
-            intent=intent,
-            hotels=hotels,
-            location_resolver=location_resolver,
-            routing_service=routing_service,
-        )
+        if hotels is not None:
+            reference_location = location_resolver.resolve(
+                        intent.slots.meeting_location
+                    )
+            hotel_contexts = build_hotel_contexts(
+                intent=intent,
+                hotels=hotels,
+                location_resolver=location_resolver,
+                routing_service=routing_service,
+            )
+            filtered_contexts = filter_hotel_contexts(
+                hotel_contexts=hotel_contexts,
+                intent=intent,
+            )
+            
 
-        print("Hotel Search Query:")
-        location = (
-            intent.slots.destination
-            or intent.slots.meeting_location
-        )
+            print("Hotel Search Query:")
+            location = (
+                intent.slots.destination
+                or intent.slots.meeting_location
+            )
 
-        print(f"location: {location}")
-        print(f"adults: {intent.slots.number_of_adults or 1}")
-        print(f"children: {intent.slots.number_of_children or 0}")
-        print(f"rooms: {intent.slots.number_of_rooms or 1}")
+            print(f"location: {location}")
+            print(f"adults: {intent.slots.number_of_adults or 1}")
+            print(f"children: {intent.slots.number_of_children or 0}")
+            print(f"rooms: {intent.slots.number_of_rooms or 1}")
 
-        _print_hotels(hotels)
+            _print_hotels(hotels)
 
-        print("\nHotel Contexts:")
-        for context in hotel_contexts:
-            hotel = context.hotel
+            print("\nHotel Contexts:")
+            for context in hotel_contexts:
+                hotel = context.hotel
 
-            print(f"{hotel.name}")
+                print(f"{hotel.name}")
 
-            if context.distance_km is not None:
-                print(
-                    f"   Distance: "
-                    f"{context.distance_km:.2f} km"
-                )
-            else:
-                print("   Distance: unavailable")
-    
+                if context.distance_km is not None:
+                    print(
+                        f"   Distance: "
+                        f"{context.distance_km:.2f} km"
+                    )
+                else:
+                    print("   Distance: unavailable")
+        
         
 
 
@@ -132,8 +143,7 @@ def main() -> None:
     llm_provider = OllamaProvider()
     agent = IntentAgent(llm_provider)
     conversation = ConversationManager()
-    location_resolver = LocationResolver()
-    routing_service = HaversineDistanceCalculator()
+    
 
     while True:
         try:

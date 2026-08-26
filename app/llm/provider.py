@@ -12,7 +12,12 @@ class LLMProvider(ABC):
     """
 
     @abstractmethod
-    def generate_structured(self, system_prompt: str, user_prompt: str) -> str:
+    def generate_structured(
+    self,
+    system_prompt: str,
+    user_prompt: str,
+    response_schema: dict | None = None,
+) -> str:
         """Send a system + user prompt to the model and return the raw
         text response. The caller is responsible for parsing/validating it.
         """

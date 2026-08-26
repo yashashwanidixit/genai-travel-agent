@@ -54,16 +54,21 @@ class OllamaProvider(LLMProvider):
         self.keep_alive = keep_alive or os.getenv("OLLAMA_KEEP_ALIVE", "30m")
         self.num_thread = num_thread or int(os.getenv("OLLAMA_NUM_THREADS", "6"))
 
-    def generate_structured(self, system_prompt: str, user_prompt: str) -> str:
-        """Original interface required by LLMProvider. Kept working
-        unchanged for anything that only needs the text back.
-        """
+    def generate_structured(
+    self,
+    system_prompt: str,
+    user_prompt: str,
+    response_schema: dict | None = None,
+) -> str:
         return self.generate_structured_with_metadata(
-            system_prompt, user_prompt
+            system_prompt,
+            user_prompt,
+            response_schema=response_schema,
         ).text
 
     def generate_structured_with_metadata(
         self, system_prompt: str, user_prompt: str,
+        response_schema: dict | None = None,
        
     ) -> OllamaCallResult:
         """Same call as generate_structured, but also returns LLM-only
@@ -76,7 +81,11 @@ class OllamaProvider(LLMProvider):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "format": "json",
+            "format": (
+    response_schema
+    if response_schema is not None
+    else "json"
+),
             "stream": False,
             "think" : False,
             "keep_alive": self.keep_alive,

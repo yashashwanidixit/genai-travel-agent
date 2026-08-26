@@ -57,10 +57,16 @@ class IntentAgent:
     missing_slots list; treat it as a placeholder, not a signal.
     """
 
-    def __init__(self, llm_provider: LLMProvider, max_retries: int = 1):
+    def __init__(
+    self,
+    llm_provider: LLMProvider,
+    max_retries: int = 1,
+):
         self.llm_provider = llm_provider
         self.max_retries = max_retries
         self._cold_start_tracker = ColdStartTracker()
+
+        self._response_schema = _LLMIntentOutput.model_json_schema()
 
     def parse(self, raw_query: str) -> TravelIntent:
         intent, _ = self.parse_with_metrics(raw_query)
@@ -90,10 +96,12 @@ class IntentAgent:
                             self._cold_start_tracker.is_possible_cold_start()
                         )
                     call_result = (
-                        self.llm_provider.generate_structured_with_metadata(
-                            INTENT_SYSTEM_PROMPT, user_prompt
-                        )
-                    )
+                            self.llm_provider.generate_structured_with_metadata(
+                                INTENT_SYSTEM_PROMPT,
+                                user_prompt,
+                                response_schema=self._response_schema,
+                            )
+)
                     raw_response = call_result.text
                     
                     print("\n[DEBUG] Raw LLM response:")
@@ -104,7 +112,9 @@ class IntentAgent:
                     llm_timer = PerformanceTimer()
                     llm_timer.start()
                     raw_response = self.llm_provider.generate_structured(
-                        INTENT_SYSTEM_PROMPT, user_prompt
+                        INTENT_SYSTEM_PROMPT,
+                        user_prompt,
+                        response_schema=self._response_schema,
                     )
                     
                     llm_time_accum += llm_timer.stop()

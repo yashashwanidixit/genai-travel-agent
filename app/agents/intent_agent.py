@@ -79,7 +79,7 @@ class IntentAgent:
             for _ in range(self.max_retries + 1):
                 user_prompt = self._build_user_prompt(raw_query, last_error)
                
-                print(f"\n[DEBUG] LLM attempt {attempt + 1}")
+                print(f"\n[DEBUG] LLM attempt {attempt }")
                 if hasattr(
                     self.llm_provider, "generate_structured_with_metadata"
                 ):

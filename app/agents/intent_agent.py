@@ -42,6 +42,8 @@ class _LLMIntentOutput(BaseModel):
     ride_type: Optional[str] = None
     max_hotel_price: Optional[float] = None
     max_hotel_distance_km: Optional[float] = None
+    target_price: Optional[float] = None
+    target_rating: Optional[float] = None
 
 
 class IntentAgent:
@@ -94,6 +96,9 @@ class IntentAgent:
                     )
                     raw_response = call_result.text
                     
+                    print("\n[DEBUG] Raw LLM response:")
+                    print(raw_response)
+                    
                     llm_time_accum += call_result.llm_time
                 else:
                     llm_timer = PerformanceTimer()
@@ -121,9 +126,7 @@ class IntentAgent:
                     )
                     attempt+=1
                     continue
-                
-                print("\n[DEBUG] Raw LLM response:")
-                print(raw_response)  
+                  
 
                 intent = self._to_travel_intent(raw_query, llm_output)
                 total_time = total_timer.stop()
@@ -199,6 +202,8 @@ class IntentAgent:
             ride_type=llm_output.ride_type,
             max_hotel_price= llm_output.max_hotel_price, 
             max_hotel_distance_km=llm_output.max_hotel_distance_km,
+            target_price=llm_output.target_price,
+            target_rating=llm_output.target_rating,
             
         )
 

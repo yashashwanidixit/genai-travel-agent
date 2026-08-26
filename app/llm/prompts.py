@@ -24,10 +24,13 @@ Return JSON only. No explanation, markdown, or extra text.
 
 
 ============================================================
-OUTPUT SCHEMA
+FINAL OUTPUT FORMAT — MUST FOLLOW EXACTLY
 ============================================================
 
 Return exactly one JSON object with these fields:
+
+
+Do not omit category even when other fields are null.
 
 {
   "category": "hotel_search" | "ride_search",
@@ -45,11 +48,28 @@ Return exactly one JSON object with these fields:
   "minimum_hotel_rating": number or null,
   "ride_type": string or null,
   "max_hotel_price": number or null,
-  "max_hotel_distance_km": number or null
+  "max_hotel_distance_km": number or null,
+  "target_price" : number or null,
+  "target_rating" : number or null
 }
 
 Every field must be present.
 Fields that do not apply must be null.
+For a ride request, the ONLY change is:
+
+"category": "ride_search"
+
+Never omit "category".
+
+Never return a partial JSON object.
+
+Never return only the fields that were mentioned by the user.
+
+Every key shown above MUST appear in every response.
+
+Missing information MUST be represented using null.
+
+Return ONLY the JSON object.
 
 
 ============================================================
@@ -768,50 +788,192 @@ Examples:
 → time = "8 AM"
 
 Do not invent dates or times.
+============================================================
+HARD CONSTRAINTS VS SOFT TARGETS
+============================================================
+
+Hotel price and rating can appear in TWO different forms:
+
+1. HARD CONSTRAINT
+   The user requires a limit.
+   Violating hotels must be rejected by the hard-filtering stage.
+
+2. SOFT TARGET
+   The user expresses an ideal or preferred value.
+   Hotels are NOT rejected for missing the target.
+   The target is used later by the recommendation system to calculate
+   feature utility.
+
+These meanings MUST NOT be mixed.
+
+============================================================
+PRICE
+============================================================
+
+HARD MAXIMUM PRICE:
+
+Use max_hotel_price when the user explicitly gives an upper limit.
+
+Examples:
+
+"Book me a hotel under ₹4000."
+
+max_hotel_price = 4000
+target_price = null
+
+
+"I don't want to spend more than ₹4000."
+
+max_hotel_price = 4000
+target_price = null
+
+
+"Find me a hotel below Rs 3500 per night."
+
+max_hotel_price = 3500
+target_price = null
+
+
+"At most ₹4000."
+
+max_hotel_price = 4000
+target_price = null
+
+
+SOFT TARGET PRICE:
+
+Use target_price when the user describes an ideal/preferred price
+rather than a maximum limit.
+
+Examples:
+
+"I'd prefer a hotel around ₹4000."
+
+target_price = 4000
+max_hotel_price = null
+
+
+"Ideally around ₹3500."
+
+target_price = 3500
+max_hotel_price = null
+
+
+"My ideal hotel price is ₹3000."
+
+target_price = 3000
+max_hotel_price = null
+
+
+"I'd like to stay around ₹3000 per night."
+
+target_price = 3000
+max_hotel_price = null
+
+
+CRITICAL:
+
+"under", "below", "at most", "no more than", "maximum"
+indicate a HARD maximum.
+
+"around", "ideally", "preferred", "I'd like to stay around",
+"my ideal price"
+indicate a SOFT target.
 
 
 ============================================================
-FINAL VALIDATION BEFORE RESPONDING
+RATING
 ============================================================
 
-Before returning JSON, silently verify:
+HARD MINIMUM RATING:
 
-1. Is category correct?
+Use minimum_hotel_rating when the user explicitly requires a minimum.
 
-2. Is every extracted location explicitly present in the CURRENT
-   user message?
+Examples:
 
-3. For every location, did you determine its semantic role rather
-   than its position?
+"I want a hotel rated at least 4.5."
 
-4. For hotel_search:
-   - Where is the user coming from/arriving/currently located?
-     → origin
-   - Where does the user want the hotel?
-     → destination
-   - Where does the meeting/event actually happen?
-     → meeting_location
+minimum_hotel_rating = 4.5
+target_rating = null
 
-5. Did you accidentally copy destination into meeting_location?
 
-6. Did you accidentally copy origin into meeting_location?
+"Don't show me hotels below 4."
 
-7. Did you invent a meeting location?
+minimum_hotel_rating = 4.0
+target_rating = null
 
-8. Did you convert "near", "nearby", or "close" into a numeric
-   distance without an explicit number?
 
-9. Did you convert vague rating language into a numeric rating?
+"Only hotels with a rating of 4.5 or higher."
 
-10. Did you invent a price?
+minimum_hotel_rating = 4.5
+target_rating = null
 
-11. Did you infer rooms from adults or child ages from children?
 
-12. Are all fields present in the JSON object?
+SOFT TARGET RATING:
 
-13. Are missing values represented as null?
+Use target_rating when the user expresses an ideal/preferred rating.
 
-14. Return ONLY the JSON object.
+Examples:
 
-Return JSON only. No explanation.
+"I'd prefer something around 4.5 rated."
+
+target_rating = 4.5
+minimum_hotel_rating = null
+
+
+"Ideally a hotel rated around 4.5."
+
+target_rating = 4.5
+minimum_hotel_rating = null
+
+
+"I'd like a hotel around 4.2."
+
+target_rating = 4.2
+minimum_hotel_rating = null
+
+
+CRITICAL:
+
+"at least", "or higher", "minimum", "don't show below"
+indicate a HARD minimum.
+
+"around", "ideally", "preferred", "I'd like around"
+indicate a SOFT target.
+
+
+============================================================
+DO NOT CONFUSE HARD AND SOFT FIELDS
+============================================================
+
+These pairs have different meanings:
+
+max_hotel_price
+    = maximum acceptable price
+
+target_price
+    = preferred/ideal price
+
+minimum_hotel_rating
+    = minimum acceptable rating
+
+target_rating
+    = preferred/ideal rating
+
+Never populate both fields for the same value unless the user
+explicitly states BOTH a hard constraint and a separate soft target.
+
+Example:
+
+"I need it under ₹5000 but ideally around ₹3500."
+
+max_hotel_price = 5000
+target_price = 3500
+
+
+"I need at least 4 stars but ideally around 4.5."
+
+minimum_hotel_rating = 4.0
+target_rating = 4.5
+
 """

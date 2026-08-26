@@ -63,7 +63,8 @@ class OllamaProvider(LLMProvider):
         ).text
 
     def generate_structured_with_metadata(
-        self, system_prompt: str, user_prompt: str
+        self, system_prompt: str, user_prompt: str,
+        response_schema : dict| None = None ,
     ) -> OllamaCallResult:
         """Same call as generate_structured, but also returns LLM-only
         timing and connection status for performance reporting.
@@ -75,7 +76,7 @@ class OllamaProvider(LLMProvider):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "format": "json",
+            "format": response_schema if response_schema is not None else "json",
             "stream": False,
             "keep_alive": self.keep_alive,
             "options": {

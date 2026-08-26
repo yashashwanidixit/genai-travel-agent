@@ -39,6 +39,10 @@ class ExtractedSlots(BaseModel):
     # user gives an explicit numeric (or clearly-implied numeric) floor.
     minimum_hotel_rating: Optional[float] = None
     max_hotel_distance_km: Optional[float] = None
+    target_price : Optional[str] = None 
+    target_rating : Optional[str] = None 
+    
+    
 
     # Ride-specific
     ride_type: Optional[str] = None

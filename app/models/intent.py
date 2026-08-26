@@ -40,7 +40,7 @@ class ExtractedSlots(BaseModel):
     minimum_hotel_rating: Optional[float] = None
     max_hotel_distance_km: Optional[float] = None
     target_price : Optional[int] = None 
-    target_rating : Optional[int] = None 
+    target_rating : Optional[float] = None 
     
     
 

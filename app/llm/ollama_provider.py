@@ -87,7 +87,7 @@ class OllamaProvider(LLMProvider):
     else "json"
 ),
             "stream": False,
-            "think" : False,
+            "think" : False,#change for qwen 3:4b
             "keep_alive": self.keep_alive,
             "options": {
                 "temperature": 0,

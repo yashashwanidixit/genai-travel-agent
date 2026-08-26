@@ -120,7 +120,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                         f"{context.distance_km:.2f} km"
                     )
                 else:
-                    print("   Distance: unavailable")
+                    print("   Distance: meeting location not provided defaulting to whole destination.")
         
         
 

@@ -13,7 +13,10 @@ from app.monitoring.performance_monitor import (
     PerformanceMetrics,
     PerformanceTimer,
 )
-
+from app.preferences.preference_extractor import (
+    ExtractedPreferences,
+    extract_preferences,
+)
 
 class IntentParsingError(Exception):
     """Raised when the LLM output cannot be turned into a valid
@@ -76,6 +79,7 @@ class IntentAgent:
     ) -> tuple[TravelIntent, PerformanceMetrics]:
         total_timer = PerformanceTimer()
         total_timer.start()
+        preferences = extract_preferences(raw_query)
 
         llm_time_accum = 0.0
         last_error: Optional[str] = None
@@ -137,7 +141,11 @@ class IntentAgent:
                     continue
                   
 
-                intent = self._to_travel_intent(raw_query, llm_output)
+                intent = self._to_travel_intent(
+                        raw_query,
+                        llm_output,
+                        preferences,
+                    )
                 total_time = total_timer.stop()
                 metrics = PerformanceMetrics(
                     status="SUCCESS",
@@ -193,7 +201,10 @@ class IntentAgent:
         )
 
     def _to_travel_intent(
-        self, raw_query: str, llm_output: _LLMIntentOutput
+        self,
+        raw_query: str,
+        llm_output: _LLMIntentOutput,
+        preferences: ExtractedPreferences,
     ) -> TravelIntent:
         slots = ExtractedSlots(
             origin=llm_output.origin,
@@ -211,6 +222,8 @@ class IntentAgent:
             ride_type=llm_output.ride_type,
             max_hotel_price= llm_output.max_hotel_price, 
             max_hotel_distance_km=llm_output.max_hotel_distance_km,
+            target_price=preferences.target_price,
+            target_rating=preferences.target_rating,
          
             
         )

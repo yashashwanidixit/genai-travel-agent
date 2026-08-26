@@ -39,6 +39,9 @@ class ExtractedSlots(BaseModel):
     # user gives an explicit numeric (or clearly-implied numeric) floor.
     minimum_hotel_rating: Optional[float] = None
     max_hotel_distance_km: Optional[float] = None
+    target_price: float | None = None
+    target_rating: float | None = None
+    
     
     
     
@@ -52,4 +55,6 @@ class TravelIntent(BaseModel):
     primary_category: IntentCategory
     slots: ExtractedSlots
     missing_slots: list[str]
+    target_price: float | None = None
+    target_rating: float | None = None
     

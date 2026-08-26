@@ -48,11 +48,11 @@ class OllamaProvider(LLMProvider):
         keep_alive: str | None = None,
         num_thread: int | None = None,
     ):
-        self.model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+        self.model = model or os.getenv("OLLAMA_MODEL", "qwen3:4b")
         self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
         self.timeout = timeout
         self.keep_alive = keep_alive or os.getenv("OLLAMA_KEEP_ALIVE", "30m")
-        self.num_thread = num_thread or int(os.getenv("OLLAMA_NUM_THREADS", "12"))
+        self.num_thread = num_thread or int(os.getenv("OLLAMA_NUM_THREADS", "6"))
 
     def generate_structured(self, system_prompt: str, user_prompt: str) -> str:
         """Original interface required by LLMProvider. Kept working
@@ -64,7 +64,7 @@ class OllamaProvider(LLMProvider):
 
     def generate_structured_with_metadata(
         self, system_prompt: str, user_prompt: str,
-        response_schema : dict| None = None ,
+       
     ) -> OllamaCallResult:
         """Same call as generate_structured, but also returns LLM-only
         timing and connection status for performance reporting.
@@ -76,8 +76,9 @@ class OllamaProvider(LLMProvider):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "format": response_schema if response_schema is not None else "json",
+            "format": "json",
             "stream": False,
+            "think" : False,
             "keep_alive": self.keep_alive,
             "options": {
                 "temperature": 0,

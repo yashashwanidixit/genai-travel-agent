@@ -222,8 +222,7 @@ class IntentAgent:
             ride_type=llm_output.ride_type,
             max_hotel_price= llm_output.max_hotel_price, 
             max_hotel_distance_km=llm_output.max_hotel_distance_km,
-            target_price=preferences.target_price,
-            target_rating=preferences.target_rating,
+            
          
             
         )
@@ -235,5 +234,10 @@ class IntentAgent:
             raw_query=raw_query,
             primary_category=llm_output.category,
             slots=slots,
+            
             missing_slots=[],
+            target_price=preferences.target_price,
+            target_rating=preferences.target_rating,
+            target_distance=preferences.target_distance,
+            
         )

@@ -238,6 +238,5 @@ class IntentAgent:
             missing_slots=[],
             target_price=preferences.target_price,
             target_rating=preferences.target_rating,
-            target_distance=preferences.target_distance,
-            
+   
         )

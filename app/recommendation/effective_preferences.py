@@ -27,7 +27,7 @@ from app.preferences.preference_extractor import ExtractedPreferences
 class EffectivePreferences(BaseModel):
     target_price: float
     target_rating: float
-    target_distance: float
+
 
 
 def resolve_effective_preferences(
@@ -48,9 +48,4 @@ def resolve_effective_preferences(
             else profile.preferred_rating
         ),
 
-        target_distance=(
-            preferences.target_distance
-            if preferences.target_distance is not None
-            else profile.preferred_distance
-        ),
     )

@@ -57,6 +57,6 @@ class TravelIntent(BaseModel):
     missing_slots: list[str]
     target_price: float | None = None
     target_rating: float | None = None
-    target_distance: float | None = None 
+    
     
     

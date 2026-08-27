@@ -12,7 +12,7 @@ from dataclasses import dataclass
 class ExtractedPreferences:
     target_price: float | None = None
     target_rating: float | None = None
-    target_distance: float | None = None
+  
 
 
 # ============================================================
@@ -30,20 +30,6 @@ SOFT_LANGUAGE_MARKERS = {
 }
 
 
-# ============================================================
-# DOMAIN MARKERS
-# ============================================================
-
-DISTANCE_UNITS = {
-    "km",
-    "kms",
-    "kilometer",
-    "kilometers",
-    "kilometre",
-    "kilometres",
-    "mile",
-    "miles",
-}
 
 
 RATING_MARKERS = {
@@ -272,10 +258,7 @@ def _classify_number(
     #
     #     5 km
     #     3 kilometers
-    #     2 miles
-    #
-    if next_token in DISTANCE_UNITS:
-        return "distance"
+
 
     # --------------------------------------------------------
     # 2. RATING
@@ -430,7 +413,5 @@ def extract_preferences(text: str) -> ExtractedPreferences:
         elif domain == "rating":
             preferences.target_rating = value
 
-        elif domain == "distance":
-            preferences.target_distance = value
 
     return preferences

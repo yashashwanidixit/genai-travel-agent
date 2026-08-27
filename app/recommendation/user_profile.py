@@ -39,7 +39,7 @@ USER_PROFILE_A = UserProfile(
     preferred_distance=5.0,
     price_weight=0.3,
     rating_weight=0.5,
-    distance_weight=0.2,
+
 )
 
 USER_PROFILE_B = UserProfile(
@@ -49,5 +49,5 @@ USER_PROFILE_B = UserProfile(
     preferred_distance=3.0,
     price_weight=0.6,
     rating_weight=0.2,
-    distance_weight=0.2,
+    
 )

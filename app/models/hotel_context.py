@@ -40,5 +40,5 @@ class HotelContext(BaseModel):
     distance_km: Optional[float] = None
     price_utility: Optional[float] = None
     rating_utility: Optional[float] = None
-    distance_utility: Optional[float] = None
+    
     final_score: Optional[float] = None

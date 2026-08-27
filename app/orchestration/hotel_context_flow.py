@@ -42,10 +42,17 @@ def build_hotel_contexts(
 
     Those responsibilities belong to other stages.
     """
+    if intent.slots.meeting_location:
+        reference_location = location_resolver.resolve(
+                intent.slots.meeting_location
+            )
 
-    reference_location = location_resolver.resolve(
-        intent.slots.meeting_location
-    )
+    if intent.slots.origin:
+        reference_location= location_resolver.resolve(
+            intent.slots.origin
+        )
+
+    
 
     return routing_service.calculate(
         reference_location=reference_location,

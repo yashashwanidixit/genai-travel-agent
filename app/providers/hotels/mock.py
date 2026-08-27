@@ -50,4 +50,5 @@ class MockHotelProvider(HotelProvider):
 
         # Dataset order is fixed (see data/mock_hotels.py), so slicing
         # here is deterministic - no sorting or shuffling.
+      
         return matches[: query.limit]

@@ -20,6 +20,11 @@ from app.recommendation.effective_preferences import (
     resolve_effective_preferences,
 )
 from app.preferences.preference_extractor import ExtractedPreferences
+from app.recommendation.score_calculation import calculate_score
+from app.recommendation.user_profile import USER_PROFILE_A
+from app.recommendation.effective_preferences import (
+    resolve_effective_preferences,
+)
 
 
 
@@ -100,10 +105,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
             profile=USER_PROFILE_A,
             preferences=preferences,
         )
-        effective_preferences = resolve_effective_preferences(
-            profile=USER_PROFILE_A,
-            preferences =preferences,
-        )
+        
         print(f"effective preferences: {effective_preferences}")
         
 
@@ -130,6 +132,12 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                 context.price_utility = utilities.price_utility
                 context.rating_utility = utilities.rating_utility
                 context.distance_utility = utilities.distance_utility
+                score = calculate_score(
+                    utilities,
+                    USER_PROFILE_A,
+                )
+
+                context.final_score = score.final_score
             
 
             print("Hotel Search Query:")
@@ -178,7 +186,13 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                     f"{context.distance_utility:.4f}"
                     if context.distance_utility is not None
                     else "   Distance utility: None"
-    ) 
+                )
+                print(
+                    f"   Final score: "
+                    f"{context.final_score:.4f}"
+                    if context.final_score is not None
+                    else "   Final score: None"
+                ) 
         
         
 

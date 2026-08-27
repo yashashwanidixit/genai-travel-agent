@@ -29,22 +29,135 @@ Every field must be present. Use null when not explicitly stated. Never add othe
 
 LOCATION RULES:
 For HOTEL SEARCH:
-- destination = location where the user wants the hotel.
-  "hotel in Whitefield" -> destination="Whitefield"
-  "hotel near Whitefield" -> destination="Whitefield"
-- origin = where the user is coming from, arriving from, or currently located.
-  "coming from Delhi" -> origin="Delhi"
-  "arrived at Bangalore Airport" -> origin="Bangalore Airport"
-- meeting_location = location explicitly identified as a meeting, interview, conference, appointment, event, or similar activity.
-  "my meeting is at ITPL" -> meeting_location="ITPL"
-- Do not confuse these roles based on position in the sentence. Never assume first location=origin or last location=destination.
-- "hotel in Whitefield near a convention centre" -> destination="Whitefield", meeting_location=null unless the user explicitly says the convention centre is where their meeting/event occurs.
-- If a location is not explicitly given, use null.
-For RIDE SEARCH:
-- origin = pickup/start location.
-- destination = drop-off/end location.
-  "cab from Bangalore Airport to Whitefield" -> origin="Bangalore Airport", destination="Whitefield".
-- meeting_location is normally null unless explicitly described as a meeting/event location.
+
+1. destination = the area/location where the user wants the hotel.
+   Examples:
+   "hotel in Whitefield" -> destination="Whitefield"
+   "hotel near Whitefield" -> destination="Whitefield"
+   "hotel around Whitefield" -> destination="Whitefield"
+
+2. origin = where the user is coming from, arriving from, or currently located.
+   Examples:
+   "coming from Delhi" -> origin="Delhi"
+   "I arrived at Bangalore Airport" -> origin="Bangalore Airport"
+
+3. meeting_location = the specific real-world place that acts as the
+   REFERENCE POINT for the hotel's distance, OR a location explicitly
+   identified as a meeting/event/appointment/interview/conference place.
+
+   IMPORTANT:
+   A reference location does NOT need to be explicitly called a
+   "meeting", "event", "appointment", etc.
+
+   If the user says that the hotel should be a certain distance
+   from a specific place, that place is the meeting_location/reference
+   location.
+
+   Examples:
+   "hotel in Whitefield around 5 km from Google Ananta Office"
+   -> destination="Whitefield"
+   -> meeting_location="Google Ananta Office"
+
+   "hotel around 5 km from Google Ananta Office in Whitefield"
+   -> destination="Whitefield"
+   -> meeting_location="Google Ananta Office"
+
+   "hotel within 10 km of Google Ananta Office in Whitefield"
+   -> destination="Whitefield"
+   -> meeting_location="Google Ananta Office"
+
+   "hotel near Google Ananta Office in Whitefield"
+   -> destination="Whitefield"
+   -> meeting_location="Google Ananta Office"
+
+   "my meeting is at ITPL, book a hotel in Whitefield"
+   -> destination="Whitefield"
+   -> meeting_location="ITPL"
+
+   "I have an interview at Manyata Tech Park, find a hotel nearby"
+   -> destination="Manyata Tech Park"
+   -> meeting_location="Manyata Tech Park"
+
+4. Do NOT confuse the hotel destination with the distance reference
+   location.
+
+   In:
+   "hotel in Whitefield around 5 km from Google Ananta Office"
+
+   Whitefield is the HOTEL DESTINATION.
+   Google Ananta Office is the DISTANCE REFERENCE LOCATION.
+
+   Therefore:
+   destination="Whitefield"
+   meeting_location="Google Ananta Office"
+
+5. When a distance expression contains "from X", "of X", or
+   "near X", inspect X as a possible distance reference location.
+
+   Examples:
+   "5 km from Bangalore Airport"
+   -> reference location = "Bangalore Airport"
+
+   "within 8 km of ITPL"
+   -> reference location = "ITPL"
+
+   "around 3 km from Google Ananta Office"
+   -> reference location = "Google Ananta Office"
+
+6. If a specific place is used as the reference point for calculating
+   hotel distance, populate meeting_location with that place even if
+   the user never says the word "meeting".
+
+7. If the user only says a vague proximity expression without naming
+   a specific reference place, do not invent meeting_location.
+
+   "hotel near Whitefield"
+   -> destination="Whitefield"
+   -> meeting_location=null
+
+   "hotel close to the airport"
+   -> destination="airport"
+   -> meeting_location=null
+
+8. Do not automatically make every location mentioned in a distance
+   expression the destination.
+
+   Compare:
+   "hotel in Whitefield around 5 km from Google Ananta Office"
+   -> destination="Whitefield"
+   -> meeting_location="Google Ananta Office"
+
+   "hotel around 5 km from Bangalore Airport"
+   -> destination="Bangalore Airport"
+   -> meeting_location="Bangalore Airport"
+
+   In the second example, the airport is both the destination/reference
+   location because no separate hotel destination was provided.
+
+9. Location-role priority:
+   - Explicit "hotel in/near X" -> X is usually destination.
+   - Explicit "from/at/near X" used as a distance reference -> X is
+     meeting_location/reference location.
+   - If the same location fills both roles because no separate
+     destination is provided, it may appear in both destination and
+     meeting_location.
+   - Never invent a location.
+
+10. HARD VS SOFT DISTANCE:
+    The LLM must ONLY populate max_hotel_distance_km for strict
+    distance constraints.
+
+    "hotel within 10 km of Google Ananta Office"
+    -> max_hotel_distance_km=10
+    -> meeting_location="Google Ananta Office"
+
+    "hotel around 5 km from Google Ananta Office"
+    -> max_hotel_distance_km=null
+    -> meeting_location="Google Ananta Office"
+
+    The distance value in the second example is a SOFT preference
+    and will be extracted separately by the deterministic preference
+    extractor. The LLM must not put it into max_hotel_distance_km.
 
 HARD HOTEL CONSTRAINTS:
 These fields represent STRICT constraints and are handled by downstream hard filtering.
@@ -148,4 +261,47 @@ EXAMPLES:
 
 FINAL CHECK:
 Before returning JSON, silently verify that category, origin, destination, meeting_location, hard price, hard rating, and hard distance are correctly distinguished; soft preferences have NOT been placed into hard fields; no information was invented; all schema fields are present; and the response contains JSON only.
+REFERENCE-LOCATION EXAMPLES:
+
+"Book me a hotel in Whitefield which is around 5 km from Google Ananta Office."
+-> destination="Whitefield"
+-> meeting_location="Google Ananta Office"
+-> max_hotel_distance_km=null
+
+"Book me a hotel around 5 km from Google Ananta Office in Whitefield."
+-> destination="Whitefield"
+-> meeting_location="Google Ananta Office"
+-> max_hotel_distance_km=null
+
+"Book me a hotel in Whitefield within 5 km of Google Ananta Office."
+-> destination="Whitefield"
+-> meeting_location="Google Ananta Office"
+-> max_hotel_distance_km=5
+
+"Book me a hotel in Whitefield no more than 10 km from Google Ananta Office."
+-> destination="Whitefield"
+-> meeting_location="Google Ananta Office"
+-> max_hotel_distance_km=10
+
+"Book me a hotel around 3 km from Bangalore Airport."
+-> destination="Bangalore Airport"
+-> meeting_location="Bangalore Airport"
+-> max_hotel_distance_km=null
+
+"Book me a hotel within 3 km of Bangalore Airport."
+-> destination="Bangalore Airport"
+-> meeting_location="Bangalore Airport"
+-> max_hotel_distance_km=3
+
+"I have a meeting at Google Ananta Office. Book me a hotel in Whitefield."
+-> destination="Whitefield"
+-> meeting_location="Google Ananta Office"
+
+"Book me a hotel in Whitefield."
+-> destination="Whitefield"
+-> meeting_location=null
+
+"Book me a hotel near Whitefield."
+-> destination="Whitefield"
+-> meeting_location=null
 """

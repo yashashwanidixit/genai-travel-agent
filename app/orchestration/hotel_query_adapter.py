@@ -15,7 +15,7 @@ from app.models.intent import TravelIntent
 
 
 def travel_intent_to_hotel_search_query(
-    intent: TravelIntent, limit: int = 10
+    intent: TravelIntent, limit: int = 20
 ) -> HotelSearchQuery:
     """Builds a HotelSearchQuery from a normalized, requirement-checked
     TravelIntent. Callers should only invoke this once the intent is

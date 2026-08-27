@@ -57,6 +57,7 @@ def maybe_search_hotels(
 
     query = travel_intent_to_hotel_search_query(intent)
     retrieved = active_provider.search(query)
+  
     
     
     # Stage 2B: retrieval and filtering are deliberately separate

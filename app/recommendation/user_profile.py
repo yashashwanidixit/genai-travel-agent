@@ -28,7 +28,7 @@ class UserProfile(BaseModel):
     # Reserved for future R3 (weighted scoring). R2 must not read these.
     price_weight: float
     rating_weight: float
-    distance_weight: float
+  
 
 
 # Two hardcoded example profiles, per the current design.

@@ -104,7 +104,7 @@ def filter_hotel_contexts(
 
     max_price = intent.slots.max_hotel_price
     minimum_rating = intent.slots.minimum_hotel_rating
-    max_distance = intent.slots.max_hotel_distance_km
+    
 
     for context in hotel_contexts:
 
@@ -133,18 +133,6 @@ def filter_hotel_contexts(
         # ---------------------------------------------------------------
         # HARD DISTANCE CONSTRAINT
         # ---------------------------------------------------------------
-
-        if max_distance is not None:
-
-            # A distance constraint was explicitly requested, but we
-            # don't have a distance to evaluate it against.
-            #
-            # Do NOT treat None as "passes".
-            if context.distance_km is None:
-                continue
-
-            if context.distance_km > max_distance:
-                continue
 
         eligible.append(context)
 

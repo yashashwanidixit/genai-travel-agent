@@ -46,7 +46,6 @@ from app.recommendation.effective_preferences import EffectivePreferences
 from app.recommendation.feature_extraction import HotelFeatures
 
 DEFAULT_PRICE_SCALE = 3000.0
-DEFAULT_DISTANCE_SCALE = 10.0
 RATING_RANGE = 5.0  # rating's fixed natural range, used as the rating deviation divisor
 
 
@@ -63,7 +62,7 @@ class HotelUtilities(BaseModel):
 
     price_utility: float
     rating_utility: float
-    distance_utility: Optional[float] = None
+   
 
 
 def calculate_price_utility(
@@ -105,34 +104,14 @@ def calculate_rating_utility(rating: float, target_rating: float) -> float:
     return max(0.0, min(1.0, raw))
 
 
-def calculate_distance_utility(
-    distance_km: Optional[float],
-    target_distance: float,
-    scale: float = DEFAULT_DISTANCE_SCALE,
-) -> Optional[float]:
-    """Closeness of `distance_km` to `target_distance`.
 
-    EXPLICIT DESIGN CHOICE: does NOT assume "closer is always better."
-    A hotel exactly at the user's preferred distance scores 1.0; a
-    hotel much closer than preferred is not maximally rewarded,
-    exactly like a hotel much farther than preferred.
-
-    If distance_km is None (no distance could be calculated upstream),
-    this function returns None rather than fabricating 0.0 or 1.0.
-    """
-    if distance_km is None:
-        return None
-
-    deviation = abs(distance_km - target_distance)
-    raw = 1.0 - deviation / scale
-    return max(0.0, min(1.0, raw))
 
 
 def calculate_utilities(
     features: HotelFeatures,
     preferences: EffectivePreferences,
     price_scale: float = DEFAULT_PRICE_SCALE,
-    distance_scale: float = DEFAULT_DISTANCE_SCALE,
+  
 ) -> HotelUtilities:
     """Top-level R2 entry point: HotelFeatures + EffectivePreferences
     -> HotelUtilities.
@@ -147,9 +126,5 @@ def calculate_utilities(
         rating_utility=calculate_rating_utility(
             features.rating, preferences.target_rating
         ),
-        distance_utility=calculate_distance_utility(
-            features.distance_km,
-            preferences.target_distance,
-            scale=distance_scale,
-        ),
+        
     )

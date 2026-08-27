@@ -25,6 +25,8 @@ from app.recommendation.user_profile import USER_PROFILE_A
 from app.recommendation.effective_preferences import (
     resolve_effective_preferences,
 )
+from app.recommendation.distance_candidate_selection import select_distance_candidates
+from app.orchestration.reference_location_resolver import resolve_distance_threshold
 
 
 
@@ -98,7 +100,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
         preferences = ExtractedPreferences(
             target_price=intent.target_price,
             target_rating=intent.target_rating,
-            target_distance=intent.target_distance,
+           
         )
 
         effective_preferences = resolve_effective_preferences(
@@ -121,7 +123,10 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                 hotel_contexts=hotel_contexts,
                 intent=intent,
             )
-            for context in filtered_contexts:
+            distance_threshold = resolve_distance_threshold(intent)
+            final_contexts = select_distance_candidates(filtered_contexts,distance_threshold)
+          
+            for context in final_contexts:
                 features = extract_features(context)
 
                 utilities = calculate_utilities(
@@ -131,7 +136,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
 
                 context.price_utility = utilities.price_utility
                 context.rating_utility = utilities.rating_utility
-                context.distance_utility = utilities.distance_utility
+                
                 score = calculate_score(
                     utilities,
                     USER_PROFILE_A,
@@ -181,12 +186,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                     else "   Rating utility: None"
                 )
 
-                print(
-                    f"   Distance utility: "
-                    f"{context.distance_utility:.4f}"
-                    if context.distance_utility is not None
-                    else "   Distance utility: None"
-                )
+                
                 print(
                     f"   Final score: "
                     f"{context.final_score:.4f}"

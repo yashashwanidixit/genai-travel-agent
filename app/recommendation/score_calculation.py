@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 from app.recommendation.user_profile import UserProfile
@@ -11,19 +9,11 @@ from app.recommendation.utility_calculation import HotelUtilities
 class HotelScore(BaseModel):
     """Weighted recommendation score for one hotel.
 
-    R3 consumes already-calculated utilities and a UserProfile.
+    R3 combines the already-calculated price and rating utilities
+    using the corresponding UserProfile weights.
 
-    It does NOT:
-        - extract preferences
-        - calculate utilities
-        - perform hard filtering
-        - rank hotels
-        - call an LLM
-        - mutate HotelFeatures
-        - mutate UserProfile
-
-    If distance_utility is None, the distance weight is excluded
-    and the remaining weights are renormalized.
+    Distance is NOT part of the score. Distance has already been
+    handled upstream during candidate selection.
     """
 
     final_score: float
@@ -33,19 +23,18 @@ def calculate_score(
     utilities: HotelUtilities,
     profile: UserProfile,
 ) -> HotelScore:
-    """Calculate the weighted recommendation score.
+    """Calculate the final recommendation score.
 
-    Normal case:
+    Formula:
 
         score =
-            price_utility * price_weight
+            price_utility  * price_weight
             + rating_utility * rating_weight
-            + distance_utility * distance_weight
 
-    If distance_utility is None, only the available dimensions
-    contribute and their weights are renormalized.
+    Only price and rating contribute to the final score.
 
-    The returned score remains in [0, 1].
+    Distance is intentionally excluded because distance is used
+    upstream to select the candidate hotels.
     """
 
     available_weight = (
@@ -53,22 +42,16 @@ def calculate_score(
         + profile.rating_weight
     )
 
+    if available_weight <= 0:
+        raise ValueError(
+            "At least one of price_weight or rating_weight "
+            "must be positive."
+        )
+
     weighted_sum = (
         utilities.price_utility * profile.price_weight
         + utilities.rating_utility * profile.rating_weight
     )
-
-    if utilities.distance_utility is not None:
-        available_weight += profile.distance_weight
-        weighted_sum += (
-            utilities.distance_utility
-            * profile.distance_weight
-        )
-
-    if available_weight <= 0:
-        raise ValueError(
-            "At least one recommendation weight must be positive."
-        )
 
     final_score = weighted_sum / available_weight
 

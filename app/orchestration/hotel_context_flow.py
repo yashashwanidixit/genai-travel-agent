@@ -8,6 +8,7 @@ from app.services.routing.distance_calculator import (
     HaversineDistanceCalculator,
 )
 from app.models.hotel import Hotel
+from app.orchestration.reference_location_resolver import resolve_reference_location
 
 
 def build_hotel_contexts(
@@ -42,15 +43,7 @@ def build_hotel_contexts(
 
     Those responsibilities belong to other stages.
     """
-    if intent.slots.meeting_location:
-        reference_location = location_resolver.resolve(
-                intent.slots.meeting_location
-            )
-
-    if intent.slots.origin:
-        reference_location= location_resolver.resolve(
-            intent.slots.origin
-        )
+    reference_location = resolve_reference_location(intent, location_resolver)
 
     
 

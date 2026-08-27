@@ -124,8 +124,9 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                 intent=intent,
             )
             distance_threshold = resolve_distance_threshold(intent)
+            print(f"Distance Threshold : {distance_threshold}")
             final_contexts = select_distance_candidates(filtered_contexts,distance_threshold)
-          
+            print(f"lenght : {len(final_contexts)}")
             for context in final_contexts:
                 features = extract_features(context)
 
@@ -160,7 +161,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
             
 
             print("\nHotel Contexts:")
-            for context in filtered_contexts:
+            for context in final_contexts:
                 hotel = context.hotel
 
                 print(f"{hotel.name}")

@@ -44,7 +44,7 @@ class OllamaProvider(LLMProvider):
         self,
         model: str | None = None,
         host: str | None = None,
-        timeout: int = 250,
+        timeout: int = 120,
         keep_alive: str | None = None,
         num_thread: int | None = None,
     ):

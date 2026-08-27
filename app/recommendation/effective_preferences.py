@@ -21,6 +21,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from app.recommendation.user_profile import UserProfile
+from app.preferences.preference_extractor import ExtractedPreferences
 
 
 class EffectivePreferences(BaseModel):
@@ -31,30 +32,25 @@ class EffectivePreferences(BaseModel):
 
 def resolve_effective_preferences(
     profile: UserProfile,
-    intent_target_price: Optional[float] = None,
-    intent_target_rating: Optional[float] = None,
-    intent_target_distance: Optional[float] = None,
+    preferences: ExtractedPreferences,
 ) -> EffectivePreferences:
-    """Resolves the effective target for each dimension independently.
 
-    intent_target_* values come from the deterministic soft-preference
-    extractor (per §5) via TravelIntent - this function does not parse
-    or interpret them, it only checks whether each is None.
-    """
     return EffectivePreferences(
         target_price=(
-            intent_target_price
-            if intent_target_price is not None
+            preferences.target_price
+            if preferences.target_price is not None
             else profile.preferred_price
         ),
+
         target_rating=(
-            intent_target_rating
-            if intent_target_rating is not None
+            preferences.target_rating
+            if preferences.target_rating is not None
             else profile.preferred_rating
         ),
+
         target_distance=(
-            intent_target_distance
-            if intent_target_distance is not None
+            preferences.target_distance
+            if preferences.target_distance is not None
             else profile.preferred_distance
         ),
     )

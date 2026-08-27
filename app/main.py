@@ -15,6 +15,17 @@ from app.orchestration.hotel_context_flow import build_hotel_contexts
 from app.constraints.hotel import filter_hotel_contexts
 from app.recommendation.feature_extraction import extract_features
 from app.recommendation.utility_calculation import calculate_utilities
+from app.preferences.preference_extractor import extract_preferences
+from app.recommendation.effective_preferences import (
+    resolve_effective_preferences,
+)
+from app.preferences.preference_extractor import ExtractedPreferences
+
+
+
+from app.recommendation.user_profile import USER_PROFILE_A
+
+
 
 location_resolver = LocationResolver()
 routing_service = HaversineDistanceCalculator()
@@ -79,12 +90,25 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
        
     if intent.primary_category == IntentCategory.HOTEL_SEARCH:
         hotels = maybe_search_hotels(intent)
+        preferences = ExtractedPreferences(
+            target_price=intent.target_price,
+            target_rating=intent.target_rating,
+            target_distance=intent.target_distance,
+        )
+
+        effective_preferences = resolve_effective_preferences(
+            profile=USER_PROFILE_A,
+            preferences=preferences,
+)
+        effective_preferences = resolve_effective_preferences(
+            profile=USER_PROFILE_A,
+            preferences =preferences,
+        )
+        print(f"effective preferences: {effective_preferences}")
         
 
         if hotels is not None:
-            reference_location = location_resolver.resolve(
-                        intent.slots.meeting_location
-                    )
+            
             hotel_contexts = build_hotel_contexts(
                 intent=intent,
                 hotels=hotels,
@@ -120,6 +144,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
             print(f"rooms: {intent.slots.number_of_rooms or 1}")
 
             _print_hotels(hotels)
+            
 
             print("\nHotel Contexts:")
             for context in filtered_contexts:
@@ -141,19 +166,19 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                 else "   Price utility: None"
             )
 
-            print(
-                f"   Rating utility: "
-                f"{context.rating_utility:.4f}"
-                if context.rating_utility is not None
-                else "   Rating utility: None"
-            )
+                print(
+                    f"   Rating utility: "
+                    f"{context.rating_utility:.4f}"
+                    if context.rating_utility is not None
+                    else "   Rating utility: None"
+                )
 
-            print(
-                f"   Distance utility: "
-                f"{context.distance_utility:.4f}"
-                if context.distance_utility is not None
-                else "   Distance utility: None"
-) 
+                print(
+                    f"   Distance utility: "
+                    f"{context.distance_utility:.4f}"
+                    if context.distance_utility is not None
+                    else "   Distance utility: None"
+    ) 
         
         
 

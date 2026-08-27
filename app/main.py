@@ -13,6 +13,8 @@ from app.services.routing.distance_calculator import (
 )
 from app.orchestration.hotel_context_flow import build_hotel_contexts
 from app.constraints.hotel import filter_hotel_contexts
+from app.recommendation.feature_extraction import extract_features
+from app.recommendation.utility_calculation import calculate_utilities
 
 location_resolver = LocationResolver()
 routing_service = HaversineDistanceCalculator()
@@ -93,6 +95,17 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                 hotel_contexts=hotel_contexts,
                 intent=intent,
             )
+            for context in filtered_contexts:
+                features = extract_features(context)
+
+                utilities = calculate_utilities(
+                    features,
+                    effective_preferences,
+                )
+
+                context.price_utility = utilities.price_utility
+                context.rating_utility = utilities.rating_utility
+                context.distance_utility = utilities.distance_utility
             
 
             print("Hotel Search Query:")
@@ -109,7 +122,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
             _print_hotels(hotels)
 
             print("\nHotel Contexts:")
-            for context in hotel_contexts:
+            for context in filtered_contexts:
                 hotel = context.hotel
 
                 print(f"{hotel.name}")
@@ -121,6 +134,26 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                     )
                 else:
                     print("   Distance: meeting location not provided defaulting to whole destination.")
+                print(
+                f"   Price utility: "
+                f"{context.price_utility:.4f}"
+                if context.price_utility is not None
+                else "   Price utility: None"
+            )
+
+            print(
+                f"   Rating utility: "
+                f"{context.rating_utility:.4f}"
+                if context.rating_utility is not None
+                else "   Rating utility: None"
+            )
+
+            print(
+                f"   Distance utility: "
+                f"{context.distance_utility:.4f}"
+                if context.distance_utility is not None
+                else "   Distance utility: None"
+) 
         
         
 

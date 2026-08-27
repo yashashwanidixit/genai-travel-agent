@@ -38,3 +38,6 @@ class HotelContext(BaseModel):
     # None means that a reference location was not available or that
     # distance has not been calculated yet.
     distance_km: Optional[float] = None
+    price_utility: Optional[float] = None
+    rating_utility: Optional[float] = None
+    distance_utility: Optional[float] = None

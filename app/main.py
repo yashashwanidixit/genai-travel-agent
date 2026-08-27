@@ -99,7 +99,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
         effective_preferences = resolve_effective_preferences(
             profile=USER_PROFILE_A,
             preferences=preferences,
-)
+        )
         effective_preferences = resolve_effective_preferences(
             profile=USER_PROFILE_A,
             preferences =preferences,

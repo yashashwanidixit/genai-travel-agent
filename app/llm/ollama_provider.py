@@ -48,7 +48,7 @@ class OllamaProvider(LLMProvider):
         keep_alive: str | None = None,
         num_thread: int | None = None,
     ):
-        self.model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+        self.model = model or os.getenv("OLLAMA_MODEL", "qwen3:4b")
         self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
         self.timeout = timeout
         self.keep_alive = keep_alive or os.getenv("OLLAMA_KEEP_ALIVE", "30m")

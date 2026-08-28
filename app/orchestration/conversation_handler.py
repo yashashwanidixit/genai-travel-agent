@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from app.agents.intent_agent import IntentAgent
-from app.models.conversation_response import ConversationResponse
-from app.models.intent import IntentCategory
 
-from app.preferences.preference_extractor import (
-    extract_preferences,
-)
+from app.models.conversation_response import ConversationResponse
+from app.models.intent import IntentCategory, TravelIntent
+
+from app.preferences.preference_extractor import extract_preferences
 
 from app.profiles.in_memory_profile_repository import (
     InMemoryProfileRepository,
@@ -14,45 +13,38 @@ from app.profiles.in_memory_profile_repository import (
 
 from app.providers.hotels.base import HotelProvider
 
+from app.orchestration.conversation_manager import ConversationManager
+
 from app.orchestration.hotel_recommendation_flow import (
     recommend_hotels,
 )
 
+from app.services.location_resolver import LocationResolver
+from app.services.routing.distance_calculator import (
+    HaversineDistanceCalculator,
+)
+
+from app.conversation.in_memory_conversation_store import (
+    InMemoryConversationStore,
+)
+
 
 class ConversationHandler:
-    """
-    Application-level coordinator for one conversation turn.
-
-    The handler connects:
-
-        user message
-            ↓
-        conversation state
-            ↓
-        intent parsing
-            ↓
-        user profile
-            ↓
-        recommendation pipeline
-
-    It does NOT contain recommendation logic itself.
-    """
 
     def __init__(
         self,
         intent_agent: IntentAgent,
         profile_repository: InMemoryProfileRepository,
+        conversation_store: InMemoryConversationStore,
         hotel_provider: HotelProvider,
-        conversation_store,
-        location_resolver,
-        routing_service,
+        location_resolver: LocationResolver,
+        routing_service: HaversineDistanceCalculator,
     ) -> None:
 
         self.intent_agent = intent_agent
         self.profile_repository = profile_repository
-        self.hotel_provider = hotel_provider
         self.conversation_store = conversation_store
-
+        self.hotel_provider = hotel_provider
         self.location_resolver = location_resolver
         self.routing_service = routing_service
 
@@ -62,83 +54,138 @@ class ConversationHandler:
         message: str,
     ) -> ConversationResponse:
 
-        # --------------------------------------------------------
+        # =========================================================
         # 1. Get the user's profile
-        # --------------------------------------------------------
+        # =========================================================
 
         profile = self.profile_repository.get_profile(user_id)
 
-        # --------------------------------------------------------
-        # 2. Get this user's existing conversation state
-        # --------------------------------------------------------
+        # =========================================================
+        # 2. Get any existing conversation for this user
+        # =========================================================
 
         conversation = self.conversation_store.get(user_id)
 
-        # --------------------------------------------------------
-        # 3. If there is already a pending conversation,
-        #    provide the new message as the answer.
-        # --------------------------------------------------------
+        # =========================================================
+        # 3. EXISTING PENDING CONVERSATION
+        # =========================================================
 
         if conversation is not None and conversation.has_pending():
 
+            # The new message is an answer to the
+            # clarification question.
             intent = conversation.provide_answer(message)
 
-        else:
+            # -----------------------------------------------------
+            # Still missing information
+            # -----------------------------------------------------
 
-            # ----------------------------------------------------
-            # 4. New conversation
-            # ----------------------------------------------------
+            question = conversation.current_question()
 
-            intent = self.intent_agent.parse(message)
+            if question is not None:
 
-            conversation = self._create_conversation_manager()
+                # Keep the ConversationManager stored because
+                # we still need it for the next user message.
+                self.conversation_store.save(
+                    user_id,
+                    conversation,
+                )
 
-            intent = conversation.start_new_intent(intent)
+                return ConversationResponse(
+                    status="NEEDS_INPUT",
+                    question=question,
+                )
 
-        # --------------------------------------------------------
-        # 5. Save the conversation state
-        # --------------------------------------------------------
+            # -----------------------------------------------------
+            # Conversation is now complete
+            # -----------------------------------------------------
 
-        self.conversation_store.save(
-            user_id,
-            conversation,
-        )
+            self.conversation_store.remove(user_id)
 
-        # --------------------------------------------------------
-        # 6. Is more information required?
-        # --------------------------------------------------------
+            return self._process_ready_intent(
+                intent=intent,
+                profile=profile,
+                message=message,
+            )
+
+        # =========================================================
+        # 4. BRAND-NEW REQUEST
+        # =========================================================
+
+        preferences = extract_preferences(message)
+
+        raw_intent = self.intent_agent.parse(message)
+
+        conversation = ConversationManager()
+
+        intent = conversation.start_new_intent(raw_intent)
+
+        # =========================================================
+        # 5. Check whether clarification is required
+        # =========================================================
 
         question = conversation.current_question()
 
         if question is not None:
+
+            # Store this ConversationManager so that the user's
+            # next message can continue this conversation.
+            self.conversation_store.save(
+                user_id,
+                conversation,
+            )
 
             return ConversationResponse(
                 status="NEEDS_INPUT",
                 question=question,
             )
 
-        # --------------------------------------------------------
-        # 7. Conversation is ready
-        # --------------------------------------------------------
+        # =========================================================
+        # 6. Request is already complete
+        # =========================================================
+
+        return self._process_ready_intent(
+            intent=intent,
+            profile=profile,
+            message=message,
+            preferences=preferences,
+        )
+
+    def _process_ready_intent(
+        self,
+        intent: TravelIntent,
+        profile,
+        message: str,
+        preferences=None,
+    ) -> ConversationResponse:
+
+        # =========================================================
+        # 1. Extract preferences if this message was a
+        #    clarification answer.
+        # =========================================================
+
+        if preferences is None:
+            preferences = extract_preferences(message)
+
+        # =========================================================
+        # 2. Handle non-hotel requests
+        # =========================================================
 
         if intent.primary_category != IntentCategory.HOTEL_SEARCH:
 
             return ConversationResponse(
                 status="READY",
-                message="Request is ready but is not a hotel search.",
+                message=(
+                    "The request is ready, but hotel recommendation "
+                    "is not applicable to this request."
+                ),
             )
 
-        # --------------------------------------------------------
-        # 8. Extract soft preferences from this message
-        # --------------------------------------------------------
+        # =========================================================
+        # 3. Run hotel recommendation pipeline
+        # =========================================================
 
-        preferences = extract_preferences(message)
-
-        # --------------------------------------------------------
-        # 9. Run the recommendation pipeline
-        # --------------------------------------------------------
-
-        hotel_contexts = recommend_hotels(
+        recommendations = recommend_hotels(
             intent=intent,
             preferences=preferences,
             profile=profile,
@@ -147,25 +194,11 @@ class ConversationHandler:
             routing_service=self.routing_service,
         )
 
-        # --------------------------------------------------------
-        # 10. Return structured result
-        # --------------------------------------------------------
+        # =========================================================
+        # 4. Return recommendation response
+        # =========================================================
 
         return ConversationResponse(
             status="READY",
-            hotel_contexts=hotel_contexts,
+            hotel_contexts=recommendations,
         )
-
-    def _create_conversation_manager(self):
-        """
-        Create a new ConversationManager.
-
-        Replace this with your actual ConversationManager
-        constructor once we wire its exact dependencies.
-        """
-
-        from app.orchestration.conversation_manager import (
-            ConversationManager,
-        )
-
-        return ConversationManager()

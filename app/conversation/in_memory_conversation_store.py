@@ -5,12 +5,12 @@ from typing import Any
 
 class InMemoryConversationStore:
     """
-    Temporary in-memory storage for conversation state.
+    Stores active ConversationManager instances by user_id.
 
-    Maps a user_id to that user's ConversationManager.
+    Temporary implementation for the current backend/demo.
 
-    This is intentionally an in-memory implementation for now.
-    A persistent/session-backed implementation can replace this later.
+    Later this can be replaced by a persistent/session-backed
+    conversation store without changing ConversationHandler.
     """
 
     def __init__(self) -> None:

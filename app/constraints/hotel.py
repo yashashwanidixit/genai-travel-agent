@@ -30,8 +30,8 @@ from typing import List
 from app.models.hotel import Hotel
 from app.models.intent import TravelIntent
 from app.models.hotel_context import HotelContext
-from app.recommendation.user_profile import USER_PROFILE_A 
 
+from app.recommendation.user_profile import UserProfile
 
 
 def _passes_rating_constraint(hotel: Hotel, minimum_hotel_rating: float | None) -> bool:
@@ -53,7 +53,7 @@ def _passes_price_constraint(hotel: Hotel, max_hotel_price: float | None) -> boo
     return hotel.price_per_night <= max_hotel_price
 
 
-def filter_hotels(hotels: List[Hotel], intent: TravelIntent) -> List[Hotel]:
+def filter_hotels(hotels: List[Hotel], intent: TravelIntent,profile:UserProfile) -> List[Hotel]:
     """Returns only the hotels that satisfy ALL active hard constraints
     extracted in the given TravelIntent.
 
@@ -71,7 +71,7 @@ def filter_hotels(hotels: List[Hotel], intent: TravelIntent) -> List[Hotel]:
     if(intent.slots.max_hotel_price):
         max_hotel_price = intent.slots.max_hotel_price
     else :
-        max_hotel_price = USER_PROFILE_A.preferred_price 
+        max_hotel_price = profile.preferred_price 
     
 
     eligible: List[Hotel] = []
@@ -87,6 +87,7 @@ def filter_hotels(hotels: List[Hotel], intent: TravelIntent) -> List[Hotel]:
 def filter_hotel_contexts(
     hotel_contexts: list[HotelContext],
     intent: TravelIntent,
+    profile: UserProfile,
     extra_price_hotels: int = 3,
 ) -> list[HotelContext]:
     """Apply hotel constraints and price candidate selection.
@@ -112,7 +113,7 @@ def filter_hotel_contexts(
     if intent.slots.max_hotel_price is not None:
         max_price = intent.slots.max_hotel_price
     else:
-        max_price = USER_PROFILE_A.preferred_price
+        max_price = profile.preferred_price
 
     # ---------------------------------------------------------------
     # RATING HARD FILTER

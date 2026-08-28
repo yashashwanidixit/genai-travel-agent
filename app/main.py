@@ -5,42 +5,29 @@ from app.llm.ollama_provider import OllamaProvider
 from app.models.hotel import Hotel
 from app.models.intent import IntentCategory, TravelIntent
 from app.orchestration.conversation_manager import ConversationManager
-from app.orchestration.hotel_search_flow import maybe_search_hotels
+
 from app.validation.intent_validator import validate_destination
 from app.services.location_resolver import LocationResolver
 from app.services.routing.distance_calculator import (
     HaversineDistanceCalculator,
 )
-from app.orchestration.hotel_context_flow import build_hotel_contexts
-from app.constraints.hotel import filter_hotel_contexts
-from app.recommendation.feature_extraction import extract_features
-from app.recommendation.utility_calculation import calculate_utilities
+
 from app.preferences.preference_extractor import extract_preferences
-from app.recommendation.effective_preferences import (
-    resolve_effective_preferences,
-)
+
 from app.preferences.preference_extractor import ExtractedPreferences
+from app.orchestration.hotel_recommendation_flow import recommend_hotels
 
-from app.recommendation.user_profile import USER_PROFILE_A
-from app.recommendation.effective_preferences import (
-    resolve_effective_preferences,
+
+
+from app.profiles.in_memory_profile_repository import (
+    InMemoryProfileRepository,
 )
-from app.recommendation.distance_candidate_selection import select_distance_candidates
-from app.orchestration.reference_location_resolver import resolve_distance_threshold
-
-
-from app.recommendation.user_profile import USER_PROFILE_A
-
-from app.recommendation.user_profile import USER_PROFILE_B
-
-from app.recommendation.user_profile import USER_PROFILE_C
-from app.preferences.preference_extractor import is_soft_rating_expression
-from app.preferences.preference_extractor import tokenize
-from app.preferences.preference_extractor import is_number
+from app.recommendation.user_profile import UserProfile
+from app.providers.hotels.mock import MockHotelProvider
 
 
 
-USER_PROFILE = USER_PROFILE_C
+USER_ID = "A"
 
 
 
@@ -92,7 +79,8 @@ def _print_hotels(hotels: list[Hotel]) -> None:
     print()
 
 
-def _print_ready(intent: TravelIntent,preferences , updated: bool) -> None:
+def _print_ready(intent: TravelIntent,preferences , updated: bool,profile:UserProfile,hotel_provider) -> None:
+    
     print("\nUpdated intent:" if updated else "\nIntent:")
     print(f"\ncategory:\n{intent.primary_category.value}\n")
     print("Slots:")
@@ -106,107 +94,25 @@ def _print_ready(intent: TravelIntent,preferences , updated: bool) -> None:
     # hotel searches, not ride searches.
        
     if intent.primary_category == IntentCategory.HOTEL_SEARCH:
-        hotels = maybe_search_hotels(intent)
-        print(f"PREFERENCES : {preferences}")
-        
-       
-         
 
-
-        effective_preferences = resolve_effective_preferences(
-            profile=USER_PROFILE,
+        final_contexts = recommend_hotels(
+            intent=intent,
             preferences=preferences,
+            profile=profile,
+            hotel_provider = hotel_provider,
+             #add hotel provider when using it 
+            location_resolver=location_resolver,
+            routing_service=routing_service,
         )
-        
-        print(f"effective preferences: {effective_preferences}")
-        
 
-        if hotels is not None:
-            
-            hotel_contexts = build_hotel_contexts(
-                intent=intent,
-                hotels=hotels,
-                location_resolver=location_resolver,
-                routing_service=routing_service,
-            )
-          
-            
-            filtered_contexts = filter_hotel_contexts(
-                hotel_contexts=hotel_contexts,
-                intent=intent,
-            )
-        
-            
-            distance_threshold = resolve_distance_threshold(intent)
-            
-            final_contexts = select_distance_candidates(filtered_contexts,distance_threshold)
-           
-            for context in final_contexts:
-                features = extract_features(context)
+        print("Hotel Contexts:")
 
-                utilities = calculate_utilities(
-                    features,
-                    effective_preferences,
-                )
-
-                context.price_utility = utilities.price_utility
-                context.rating_utility = utilities.rating_utility
-            #A-PREFERS RATING B-PREFERS PRICE C- PREFERS DISTANCE 
-            print(F"USER: {USER_PROFILE}")
-            if USER_PROFILE == USER_PROFILE_A:
-                final_contexts.sort(
-                    key=lambda context: context.rating_utility or 0.0,
-                    reverse=True,
-                )
-            if USER_PROFILE == USER_PROFILE_B:
-                final_contexts = filter_hotel_contexts(
-                                hotel_contexts=final_contexts,
-                                intent=intent,
-                            )   
-            
-            #IF c DO NOTHING COZ ALREADY SORTED BY distance at last   
-                
-                    
-            print("Hotel Search Query:")
-            location = (
-                intent.slots.destination
-                or intent.slots.meeting_location
-            )
-
-            print(f"location: {location}")
-            print(f"adults: {intent.slots.number_of_adults or 1}")
-            print(f"children: {intent.slots.number_of_children or 0}")
-            print(f"rooms: {intent.slots.number_of_rooms or 1}")
-
-            _print_hotels(hotels)
-            
-
-            print("\nHotel Contexts:")
-            for context in final_contexts:
-                hotel = context.hotel
-
-                print(f"{hotel.name}")
-
-                if context.distance_km is not None:
-                    print(
-                        f"   Distance: "
-                        f"{context.distance_km:.2f} km"
-                    )
-                else:
-                    print("   Distance: meeting location not provided defaulting to whole destination.")
-                print(
-                f"   Price utility: "
-                f"{context.price_utility:.4f}"
-                if context.price_utility is not None
-                else "   Price utility: None"
-            )
-
-                print(
-                    f"   Rating utility: "
-                    f"{context.rating_utility:.4f}"
-                    if context.rating_utility is not None
-                    else "   Rating utility: None"
-                )
+        for context in final_contexts:
+            print(context.hotel.name)
+            if context.distance_km is not None:
+                print(f"Distance: {context.distance_km:.2f} km")
+            print(f"Price utility: {context.price_utility:.4f}")
+            print(f"Rating utility: {context.rating_utility:.4f}")
 
                 
                 
@@ -232,6 +138,9 @@ def main() -> None:
     llm_provider = OllamaProvider()
     agent = IntentAgent(llm_provider)
     conversation = ConversationManager()
+    profile_repository = InMemoryProfileRepository()
+    profile = profile_repository.get_profile(USER_ID)
+    hotel_provider = MockHotelProvider()
     
 
     while True:
@@ -254,7 +163,7 @@ def main() -> None:
             if question is not None:
                 _print_missing(intent, question, updated=True)
             else:
-                _print_ready(intent, updated=True)
+                _print_ready(intent, updated=True,profile =profile, hotel_provider = hotel_provider)
             continue
 
         _print_ollama_config(llm_provider)
@@ -278,7 +187,7 @@ def main() -> None:
             _print_missing(intent,question, updated=False)
         else:
             _print_slots(intent)
-            _print_ready(intent, preferences ,updated=False)
+            _print_ready(intent, preferences ,updated=False,profile =profile,hotel_provider= hotel_provider)
 
 
 if __name__ == "__main__":

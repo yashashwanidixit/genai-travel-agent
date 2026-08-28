@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import Optional
 
 from app.models.intent import TravelIntent
-from app.recommendation.user_profile import USER_PROFILE_A
+
 from app.services.location_resolver import LocationResolver
+from app.recommendation.user_profile import UserProfile
 
 
-def resolve_distance_threshold(intent: TravelIntent) -> float:
+def resolve_distance_threshold(intent: TravelIntent,profile :UserProfile) -> float:
     """Return the distance threshold for the current hotel search.
 
     Uses the user's explicit hard distance constraint when provided.
@@ -16,7 +17,7 @@ def resolve_distance_threshold(intent: TravelIntent) -> float:
     if intent.slots.max_hotel_distance_km is not None:
         return intent.slots.max_hotel_distance_km
 
-    return USER_PROFILE_A.preferred_distance
+    return profile.preferred_distance
 
 
 def resolve_reference_location(

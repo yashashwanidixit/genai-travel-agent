@@ -30,6 +30,8 @@ from typing import List
 from app.models.hotel import Hotel
 from app.models.intent import TravelIntent
 from app.models.hotel_context import HotelContext
+from app.recommendation.user_profile import USER_PROFILE_A 
+
 
 
 def _passes_rating_constraint(hotel: Hotel, minimum_hotel_rating: float | None) -> bool:
@@ -66,7 +68,11 @@ def filter_hotels(hotels: List[Hotel], intent: TravelIntent) -> List[Hotel]:
     silently worked around.
     """
     minimum_hotel_rating = intent.slots.minimum_hotel_rating
-    max_hotel_price = intent.slots.max_hotel_price
+    if(intent.slots.max_hotel_price):
+        max_hotel_price = intent.slots.max_hotel_price
+    else :
+        max_hotel_price = USER_PROFILE_A.preferred_price 
+    
 
     eligible: List[Hotel] = []
     for hotel in hotels:
@@ -81,48 +87,44 @@ def filter_hotels(hotels: List[Hotel], intent: TravelIntent) -> List[Hotel]:
 def filter_hotel_contexts(
     hotel_contexts: list[HotelContext],
     intent: TravelIntent,
+    extra_price_hotels: int = 3,
 ) -> list[HotelContext]:
-    """Apply explicit hard constraints to hotel contexts.
+    """Apply hotel constraints and price candidate selection.
 
-    Supported hard constraints:
-        - maximum hotel price
-        - minimum hotel rating
-        - maximum hotel distance
+    Price:
+        - Explicit max_hotel_price is used when provided.
+        - Otherwise USER_PROFILE_A.preferred_price is used.
+        - Hotels are sorted by price.
+        - All hotels within the price threshold are retained.
+        - Up to `extra_price_hotels` additional more-expensive hotels
+          are retained as candidates.
 
-    This function ONLY filters.
+    Rating:
+        - minimum_hotel_rating remains a strict hard constraint.
 
-    It does not:
-        - calculate distance
-        - calculate recommendation scores
-        - normalize features
-        - apply user-profile weights
-        - rank hotels
-        - mutate HotelContext or Hotel objects
+    This function does not score or rank hotels by recommendation score.
     """
 
-    eligible: list[HotelContext] = []
+    # ---------------------------------------------------------------
+    # PRICE THRESHOLD
+    # ---------------------------------------------------------------
 
-    max_price = intent.slots.max_hotel_price
+    if intent.slots.max_hotel_price is not None:
+        max_price = intent.slots.max_hotel_price
+    else:
+        max_price = USER_PROFILE_A.preferred_price
+
+    # ---------------------------------------------------------------
+    # RATING HARD FILTER
+    # ---------------------------------------------------------------
+
     minimum_rating = intent.slots.minimum_hotel_rating
-    
+
+    # First apply the genuinely hard rating constraint.
+    rating_eligible: list[HotelContext] = []
 
     for context in hotel_contexts:
-
         hotel = context.hotel
-
-        # ---------------------------------------------------------------
-        # HARD PRICE CONSTRAINT
-        # ---------------------------------------------------------------
-
-        if (
-            max_price is not None
-            and hotel.price_per_night > max_price
-        ):
-            continue
-
-        # ---------------------------------------------------------------
-        # HARD RATING CONSTRAINT
-        # ---------------------------------------------------------------
 
         if (
             minimum_rating is not None
@@ -130,10 +132,38 @@ def filter_hotel_contexts(
         ):
             continue
 
+        rating_eligible.append(context)
+
         # ---------------------------------------------------------------
-        # HARD DISTANCE CONSTRAINT
+        # PRICE CANDIDATE SELECTION
         # ---------------------------------------------------------------
 
-        eligible.append(context)
+    # Sort by actual hotel price.
+    rating_eligible.sort(
+        key=lambda context: context.hotel.price_per_night
+    )
 
-    return eligible
+    within_price = [
+        context
+        for context in rating_eligible
+        if context.hotel.price_per_night <= max_price
+    ]
+
+    outside_price = [
+        context
+        for context in rating_eligible
+        if context.hotel.price_per_night > max_price
+    ]
+
+    # Keep the hotels within the target price plus a few alternatives.
+    candidates = (
+        within_price
+        + outside_price[:extra_price_hotels]
+    )
+
+    # Final ordering is still by price.
+    candidates.sort(
+        key=lambda context: context.hotel.price_per_night
+    )
+
+    return candidates

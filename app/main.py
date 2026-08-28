@@ -20,7 +20,7 @@ from app.recommendation.effective_preferences import (
     resolve_effective_preferences,
 )
 from app.preferences.preference_extractor import ExtractedPreferences
-from app.recommendation.score_calculation import calculate_score
+
 from app.recommendation.user_profile import USER_PROFILE_A
 from app.recommendation.effective_preferences import (
     resolve_effective_preferences,
@@ -29,8 +29,18 @@ from app.recommendation.distance_candidate_selection import select_distance_cand
 from app.orchestration.reference_location_resolver import resolve_distance_threshold
 
 
-
 from app.recommendation.user_profile import USER_PROFILE_A
+
+from app.recommendation.user_profile import USER_PROFILE_B
+
+from app.recommendation.user_profile import USER_PROFILE_C
+from app.preferences.preference_extractor import is_soft_rating_expression
+from app.preferences.preference_extractor import tokenize
+from app.preferences.preference_extractor import is_number
+
+
+
+USER_PROFILE = USER_PROFILE_C
 
 
 
@@ -82,7 +92,7 @@ def _print_hotels(hotels: list[Hotel]) -> None:
     print()
 
 
-def _print_ready(intent: TravelIntent, updated: bool) -> None:
+def _print_ready(intent: TravelIntent,preferences , updated: bool) -> None:
     print("\nUpdated intent:" if updated else "\nIntent:")
     print(f"\ncategory:\n{intent.primary_category.value}\n")
     print("Slots:")
@@ -97,14 +107,14 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
        
     if intent.primary_category == IntentCategory.HOTEL_SEARCH:
         hotels = maybe_search_hotels(intent)
-        preferences = ExtractedPreferences(
-            target_price=intent.target_price,
-            target_rating=intent.target_rating,
-           
-        )
+        print(f"PREFERENCES : {preferences}")
+        
+       
+         
+
 
         effective_preferences = resolve_effective_preferences(
-            profile=USER_PROFILE_A,
+            profile=USER_PROFILE,
             preferences=preferences,
         )
         
@@ -119,14 +129,18 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                 location_resolver=location_resolver,
                 routing_service=routing_service,
             )
+          
+            
             filtered_contexts = filter_hotel_contexts(
                 hotel_contexts=hotel_contexts,
                 intent=intent,
             )
+        
+            
             distance_threshold = resolve_distance_threshold(intent)
-            print(f"Distance Threshold : {distance_threshold}")
+            
             final_contexts = select_distance_candidates(filtered_contexts,distance_threshold)
-            print(f"lenght : {len(final_contexts)}")
+           
             for context in final_contexts:
                 features = extract_features(context)
 
@@ -137,15 +151,22 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
 
                 context.price_utility = utilities.price_utility
                 context.rating_utility = utilities.rating_utility
-                
-                score = calculate_score(
-                    utilities,
-                    USER_PROFILE_A,
+            #A-PREFERS RATING B-PREFERS PRICE C- PREFERS DISTANCE 
+            print(F"USER: {USER_PROFILE}")
+            if USER_PROFILE == USER_PROFILE_A:
+                final_contexts.sort(
+                    key=lambda context: context.rating_utility or 0.0,
+                    reverse=True,
                 )
-
-                context.final_score = score.final_score
+            if USER_PROFILE == USER_PROFILE_B:
+                final_contexts = filter_hotel_contexts(
+                                hotel_contexts=final_contexts,
+                                intent=intent,
+                            )   
             
-
+            #IF c DO NOTHING COZ ALREADY SORTED BY distance at last   
+                
+                    
             print("Hotel Search Query:")
             location = (
                 intent.slots.destination
@@ -188,12 +209,7 @@ def _print_ready(intent: TravelIntent, updated: bool) -> None:
                 )
 
                 
-                print(
-                    f"   Final score: "
-                    f"{context.final_score:.4f}"
-                    if context.final_score is not None
-                    else "   Final score: None"
-                ) 
+                
         
         
 
@@ -221,6 +237,7 @@ def main() -> None:
     while True:
         try:
             user_text = input("You:\n").strip()
+            preferences = extract_preferences(user_text)
         except (EOFError, KeyboardInterrupt):
             print("\nExiting.")
             break
@@ -258,10 +275,10 @@ def main() -> None:
         question = conversation.current_question()
         
         if question is not None:
-            _print_missing(intent, question, updated=False)
+            _print_missing(intent,question, updated=False)
         else:
             _print_slots(intent)
-            _print_ready(intent, updated=False)
+            _print_ready(intent, preferences ,updated=False)
 
 
 if __name__ == "__main__":

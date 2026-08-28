@@ -25,22 +25,25 @@ from app.preferences.preference_extractor import ExtractedPreferences
 
 
 class EffectivePreferences(BaseModel):
-    target_price: float
+    
     target_rating: float
+    target_price: float
 
 
 
 def resolve_effective_preferences(
     profile: UserProfile,
     preferences: ExtractedPreferences,
+    max_hotel_price: float | None = None,
 ) -> EffectivePreferences:
 
     return EffectivePreferences(
         target_price=(
-            preferences.target_price
-            if preferences.target_price is not None
+            max_hotel_price
+            if max_hotel_price is not None
             else profile.preferred_price
         ),
+        
 
         target_rating=(
             preferences.target_rating

@@ -304,4 +304,11 @@ REFERENCE-LOCATION EXAMPLES:
 "Book me a hotel near Whitefield."
 -> destination="Whitefield"
 -> meeting_location=null
+
+"Book me a hotel in whitefield around 3 rated. "
+-> destination="Whitefield"
+-> meeting_location=null
+-> minimum_hotel_rating="null
+
+
 """

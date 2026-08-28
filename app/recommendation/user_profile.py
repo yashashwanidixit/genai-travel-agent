@@ -26,7 +26,7 @@ class UserProfile(BaseModel):
     preferred_distance: float
 
     # Reserved for future R3 (weighted scoring). R2 must not read these.
-    price_weight: float
+    
     rating_weight: float
   
 
@@ -37,7 +37,8 @@ USER_PROFILE_A = UserProfile(
     preferred_price=4000.0,
     preferred_rating=4.2,
     preferred_distance=5.0,
-    price_weight=0.3,
+    price_weight = 0.5,
+
     rating_weight=0.5,
 
 )
@@ -47,7 +48,18 @@ USER_PROFILE_B = UserProfile(
     preferred_price=6000.0,
     preferred_rating=4.0,
     preferred_distance=3.0,
-    price_weight=0.6,
+    price_weight = 0.8,
+    
+
     rating_weight=0.2,
     
+)
+
+USER_PROFILE_C = UserProfile(
+    name="C",
+    preferred_price=3000.0,
+    preferred_rating=4.0,
+    preferred_distance=5.0,
+    price_weight=0.9,
+    rating_weight=0.1,
 )

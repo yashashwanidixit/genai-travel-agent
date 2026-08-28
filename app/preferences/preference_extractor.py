@@ -12,7 +12,6 @@ from dataclasses import dataclass
 class ExtractedPreferences:
     target_price: float | None = None
     target_rating: float | None = None
-  
 
 
 # ============================================================
@@ -30,29 +29,15 @@ SOFT_LANGUAGE_MARKERS = {
 }
 
 
-
+# ============================================================
+# RATING MARKERS
+# ============================================================
 
 RATING_MARKERS = {
     "rated",
     "rating",
     "star",
     "stars",
-}
-
-
-PRICE_MARKERS = {
-    "rs",
-    "rs.",
-    "rupees",
-    "₹",
-}
-
-
-PRICE_PHRASES = {
-    "per night",
-    "a night",
-    "nightly",
-    "/night",
 }
 
 
@@ -74,40 +59,7 @@ TOKEN_PATTERN = re.compile(
 )
 
 
-def _tokenize(text: str) -> list[str]:
-    """
-    Convert the user's query into meaningful tokens.
-
-    Example:
-
-        "book me a hotel around 4000 per night and
-         around 4.5 rated and around 5 km"
-
-    becomes approximately:
-
-        [
-            "book",
-            "me",
-            "a",
-            "hotel",
-            "around",
-            "4000",
-            "per",
-            "night",
-            "and",
-            "around",
-            "4.5",
-            "rated",
-            "and",
-            "around",
-            "5",
-            "km",
-        ]
-
-    We deliberately tokenize instead of using an arbitrary character
-    window around each number.
-    """
-
+def tokenize(text: str) -> list[str]:
     return TOKEN_PATTERN.findall(text.lower())
 
 
@@ -115,14 +67,10 @@ def _tokenize(text: str) -> list[str]:
 # NUMBER DETECTION
 # ============================================================
 
-NUMBER_PATTERN = re.compile(
-    r"^\d+(?:\.\d+)?$"
-)
+NUMBER_PATTERN = re.compile(r"^\d+(?:\.\d+)?$")
 
 
-def _is_number(token: str) -> bool:
-    """Return True when a token represents a number."""
-
+def is_number(token: str) -> bool:
     return bool(NUMBER_PATTERN.fullmatch(token))
 
 
@@ -134,8 +82,6 @@ def _previous_token(
     tokens: list[str],
     index: int,
 ) -> str | None:
-    """Return the token immediately before the current token."""
-
     if index == 0:
         return None
 
@@ -146,199 +92,200 @@ def _next_token(
     tokens: list[str],
     index: int,
 ) -> str | None:
-    """Return the token immediately after the current token."""
-
     if index + 1 >= len(tokens):
         return None
 
     return tokens[index + 1]
 
 
-def _next_two_tokens(
-    tokens: list[str],
-    index: int,
-) -> tuple[str | None, str | None]:
-    """Return the next two tokens after the current token."""
+# ============================================================
+# RATING EXTRACTION
+# ============================================================
 
-    first = _next_token(tokens, index)
-
-    if index + 2 >= len(tokens):
-        return first, None
-
-    return first, tokens[index + 2]
-
-
-def _has_soft_language_near_number(
+def _is_rating_expression(
     tokens: list[str],
     index: int,
 ) -> bool:
     """
-    Determine whether this number is associated with soft-preference
-    language.
+    Determine whether a numeric token represents a hotel rating.
 
-    We intentionally inspect nearby TOKENS rather than characters.
+    Uses a small local context window instead of requiring the rating
+    marker to be immediately adjacent to the number.
 
-    Examples:
+    Examples recognized:
 
-        "around 4000"
-              ↑
-        previous token = around → True
+        4.5 stars
+        4.5 star
+        rated 4.5
+        rating 4.5
+        rating of 4.5
+        4.5 rated
+        rated around 4.5
+        around 4.5 rated
+        rating around 4.5
+        4.5 is rated
+        hotel rated around 4.5 stars
 
-        "preferably 4.5 stars"
-                  ↑
-        previous token = preferably → True
+    Only the two tokens before and after the number are inspected.
     """
 
-    previous = _previous_token(tokens, index)
+    start = max(0, index - 2)
+    end = min(len(tokens), index + 3)
 
-    if previous in SOFT_LANGUAGE_MARKERS:
-        return True
+    nearby_tokens = tokens[start:end]
 
-    # Handle:
-
-        # "prefer a hotel around 4000"
-
-    # The immediately preceding token is "around", so this is already
-    # covered above.
+    # If a rating-related marker appears within the local window,
+    # treat the number as a rating candidate.
+    for token in nearby_tokens:
+        if token in RATING_MARKERS:
+    
+            return True
 
     return False
 
 
 # ============================================================
-# DOMAIN CLASSIFICATION
+# HARD-CONSTRAINT DETECTION
 # ============================================================
 
-def _classify_number(
+HARD_RATING_MARKERS = {
+    "at",
+    "least",
+    "minimum",
+    "above",
+    "higher",
+    "lower",
+    "more",
+    "than",
+}
+
+
+def _is_hard_rating_expression(
     tokens: list[str],
     index: int,
-) -> str | None:
+) -> bool:
     """
-    Classify one numeric token as:
-
-        "price"
-        "rating"
-        "distance"
-        None
-
-    Classification is based on tokens directly associated with THIS
-    number.
-
-    We never inspect an arbitrary section of the entire sentence.
+    Return True if the rating expression is clearly a hard
+    minimum constraint.
 
     Examples:
 
-        around 4000 per night
-               ↑
-               PRICE
+        rated at least 4
+        rating minimum 4
+        rating above 4
+        rating higher than 4
+        4 or higher
 
-        around 4.5 rated
-               ↑
-               RATING
-
-        around 5 km
-               ↑
-               DISTANCE
+    These must NOT become target_rating.
     """
 
-    value = float(tokens[index])
-
     previous = _previous_token(tokens, index)
+
+    # --------------------------------------------------------
+    # "rated at least 4"
+    # --------------------------------------------------------
+
+    if (
+        index >= 2
+        and tokens[index - 1] == "least"
+        and tokens[index - 2] == "at"
+    ):
+        return True
+
+    # --------------------------------------------------------
+    # "minimum rating 4"
+    # --------------------------------------------------------
+
+    if (
+        index >= 2
+        and tokens[index - 2] == "minimum"
+        and tokens[index - 1] == "rating"
+    ):
+        return True
+
+    # --------------------------------------------------------
+    # "rating above 4"
+    # --------------------------------------------------------
+
+    if (
+        index >= 2
+        and tokens[index - 2] == "rating"
+        and tokens[index - 1] in {"above", "higher", "lower"}
+    ):
+        return True
+
+    # --------------------------------------------------------
+    # "rated higher than 4"
+    # --------------------------------------------------------
+
+    if (
+        index >= 3
+        and tokens[index - 3] == "rated"
+        and tokens[index - 2] in {"higher", "above"}
+        and tokens[index - 1] == "than"
+    ):
+        return True
+
+    # --------------------------------------------------------
+    # "4 or higher"
+    # --------------------------------------------------------
+
     next_token = _next_token(tokens, index)
-    next_token_2 = (
-        tokens[index + 2]
-        if index + 2 < len(tokens)
-        else None
-    )
 
-    # --------------------------------------------------------
-    # 1. DISTANCE
-    # --------------------------------------------------------
-    #
-    # The distance unit must be directly after the number.
-    #
-    #     5 km
-    #     3 kilometers
+    if next_token == "or":
+        if index + 2 < len(tokens):
+            if tokens[index + 2] in {"higher", "above"}:
+                return True
+
+    return False
 
 
-    # --------------------------------------------------------
-    # 2. RATING
-    # --------------------------------------------------------
-    #
-    # Rating marker must be directly after the number.
-    #
-    #     4 rated
-    #     4.5 stars
-    #     4 rating
-    #
-    if next_token in RATING_MARKERS:
-        return "rating"
+# ============================================================
+# SOFT RATING DETECTION
+# ============================================================
 
+def is_soft_rating_expression(
+    tokens: list[str],
+    index: int,
+) -> bool:
+    """
+    Determine whether a numeric rating represents a soft
+    preference rather than a hard minimum.
 
-    # --------------------------------------------------------
-    # 3. EXPLICIT PRICE
-    # --------------------------------------------------------
-    #
-    #     ₹4000
-    #
-    # The tokenizer produces:
-    #
-    #     ["₹", "4000"]
-    #
-    if previous == "₹":
-        return "price"
+    A rating expression is considered soft when:
 
-    #     Rs 4000
-    #     Rs. 4000
-    #     rupees 4000
-    #
-    if previous in PRICE_MARKERS:
-        return "price"
+        - it is a normal rating expression, AND
+        - it is not a hard constraint.
 
-    # --------------------------------------------------------
-    # 4. PRICE PHRASES
-    # --------------------------------------------------------
-    #
-    #     4000 per night
-    #     4000 a night
-    #     4000 nightly
-    #
-    if next_token == "per" and next_token_2 == "night":
-        return "price"
+    Examples accepted:
 
-    if next_token == "a" and next_token_2 == "night":
-        return "price"
+        around 4.5 stars
+        about 4.5 stars
+        preferably 4.5 stars
+        ideally 4.5 stars
+        prefer 4.5 stars
+        4.5 stars
+        rated 4.5
+        rating of 4.5
+        I want a 4.5 star hotel
 
-    if next_token == "nightly":
-        return "price"
+    Examples rejected:
 
-    if next_token == "/night":
-        return "price"
+        rated at least 4
+        minimum rating 4
+        rating above 4
+        rating higher than 4
+        4 or higher
+    """
 
-    # --------------------------------------------------------
-    # 5. UNQUALIFIED SOFT PRICE
-    # --------------------------------------------------------
-    #
-    # Example:
-    #
-    #     "hotel around 4000"
-    #
-    # There is no "₹", "Rs", or "per night".
-    #
-    # Because this is a HOTEL domain, an unqualified large number
-    # following soft-preference language is interpreted as price.
-    #
-    # We use a conservative threshold so that:
-    #
-    #     around 3
-    #     around 4
-    #     around 5
-    #
-    # aren't accidentally interpreted as prices.
-    #
-    if previous in SOFT_LANGUAGE_MARKERS and value >= 100:
-        return "price"
+    if not _is_rating_expression(tokens, index):
+  
+        return False
 
-    return None
+    if _is_hard_rating_expression(tokens, index):
+        return False
+
+    return True
 
 
 # ============================================================
@@ -349,69 +296,43 @@ def extract_preferences(text: str) -> ExtractedPreferences:
     """
     Deterministically extract soft hotel preferences.
 
-    Pipeline:
+    Currently extracts:
 
-        raw text
-            ↓
-        tokenize
-            ↓
-        identify numeric tokens
-            ↓
-        inspect directly associated tokens
-            ↓
-        classify as price / rating / distance
-            ↓
-        return ExtractedPreferences
+        - target_rating
 
-    This function:
+    Hard constraints such as minimum_hotel_rating are NOT extracted
+    here. They belong to TravelIntent and the LLM intent parser.
 
-        DOES:
-            - extract soft price
-            - extract soft rating
-            - extract soft distance
+    Examples:
 
-        DOES NOT:
-            - call the LLM
-            - perform hard filtering
-            - calculate utilities
-            - calculate scores
-            - modify TravelIntent
+        "hotel around 4.5 stars"
+            -> target_rating = 4.5
+
+        "hotel ideally rated 4.5"
+            -> target_rating = 4.5
+
+        "hotel with a rating of 4.5"
+            -> target_rating = 4.5
+
+        "hotel rated at least 4"
+            -> target_rating = None
     """
+
+    tokens = tokenize(text)
 
     preferences = ExtractedPreferences()
 
-    tokens = _tokenize(text)
-
     for index, token in enumerate(tokens):
 
-        if not _is_number(token):
+        if not is_number(token):
+         
             continue
-
-        # ----------------------------------------------------
-        # Hard constraints must not become soft preferences.
-        # ----------------------------------------------------
-        #
-        # We only consider numbers immediately associated with
-        # soft language such as:
-        #
-        #     around
-        #     about
-        #     approximately
-        #     prefer
-        #     ideally
-        #
-        if not _has_soft_language_near_number(tokens, index):
-            continue
-
-        domain = _classify_number(tokens, index)
 
         value = float(token)
+      
 
-        if domain == "price":
-            preferences.target_price = value
-
-        elif domain == "rating":
+        if is_soft_rating_expression(tokens, index):
             preferences.target_rating = value
-
+            
 
     return preferences

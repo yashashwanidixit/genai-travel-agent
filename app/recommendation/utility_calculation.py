@@ -79,8 +79,8 @@ def calculate_price_utility(
       constant supplied by the caller/default, never derived from
       price or target_price itself.
     """
-    deviation = abs(price - target_price)
-    raw = 1.0 - deviation / scale
+    deviation = abs(price-target_price)
+    raw = deviation / scale
     return max(0.0, min(1.0, raw))
 
 
